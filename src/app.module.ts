@@ -1,11 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
+import configuration from '../config/configuration';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BuildingsModule } from './buildings/buildings.module';
+import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
 import { MarketsModule } from './markets/markets.module';
-import configuration from '../config/configuration';
+import { OllamaModule } from './ollama/ollama.module';
+import { RecommendModule } from './recommend/recommend.module';
 
 @Module({
   imports: [
@@ -23,6 +26,10 @@ import configuration from '../config/configuration';
     }),
     BuildingsModule,
     MarketsModule,
+    RecommendModule,
+    // RedisModule,  // 임시로 주석 처리
+    ElasticsearchModule.forRoot(),
+    OllamaModule,
   ],
   controllers: [AppController],
   providers: [AppService],
