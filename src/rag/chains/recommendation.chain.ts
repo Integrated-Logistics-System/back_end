@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { LLMChain } from 'langchain/chains';
-import { LLMService } from '../../llm/llm.service';
+import { Runnable } from '@langchain/core/runnables';
+import { LLMService } from '@/llm/llm.service';
 import { HybridRetriever } from '../retrievers/hybrid.retriever';
 import { QUERY_PARSING_PROMPT, RECOMMENDATION_PROMPT } from '../prompts';
 import {
@@ -8,29 +8,27 @@ import {
   ParsedQuery,
   LocationCoordinates,
 } from '../types/rag.types';
-import { GeocodingService } from '../../retrieval/services/geocoding.service';
+import { GeocodingService } from '@/retrieval/services/geocoding.service';
 
 @Injectable()
 export class RecommendationChain {
   private readonly logger = new Logger(RecommendationChain.name);
-  private readonly queryParsingChain: LLMChain;
-  private readonly recommendationChain: LLMChain;
+  private readonly queryParsingChain: Runnable;
+  private readonly recommendationChain: Runnable;
 
   constructor(
     private readonly llmService: LLMService,
     private readonly hybridRetriever: HybridRetriever,
     private readonly geocodingService: GeocodingService,
   ) {
-    // LangChain 체인 초기화
-    this.queryParsingChain = new LLMChain({
-      llm: this.llmService.getChatModel(),
-      prompt: QUERY_PARSING_PROMPT,
-    });
+    // 최신 LangChain 방식: Prompt.pipe(LLM) 체인 초기화
+    this.queryParsingChain = QUERY_PARSING_PROMPT.pipe(
+      this.llmService.getChatModel(),
+    );
 
-    this.recommendationChain = new LLMChain({
-      llm: this.llmService.getChatModel(),
-      prompt: RECOMMENDATION_PROMPT,
-    });
+    this.recommendationChain = RECOMMENDATION_PROMPT.pipe(
+      this.llmService.getChatModel(),
+    );
   }
 
   /**
@@ -91,14 +89,15 @@ export class RecommendationChain {
   }
 
   /**
-   * 사용자 쿼리 파싱
+   * 사용자 쿼리 파싱 - 최신 LangChain 방식
    */
   private async parseUserQuery(userQuery: string): Promise<ParsedQuery> {
     try {
       this.logger.debug('쿼리 파싱 시작');
 
-      const result = await this.queryParsingChain.call({ userQuery });
-      const parsed = this.llmService.parseJSONResponse(result.text);
+      // 새로운 방식: invoke() 사용
+      const result = await this.queryParsingChain.invoke({ userQuery });
+      const parsed = this.llmService.parseJSONResponse(result.content);
 
       const parsedQuery: ParsedQuery = {
         location: parsed.location || '서울시청',
@@ -147,7 +146,7 @@ export class RecommendationChain {
   }
 
   /**
-   * LLM을 통한 추천 생성
+   * LLM을 통한 추천 생성 - 최신 LangChain 방식
    */
   private async generateRecommendation(
     userQuery: string,
@@ -169,13 +168,14 @@ export class RecommendationChain {
         `LLM에 전달할 문서 길이: ${retrievedDocsText.length}자`,
       );
 
-      const result = await this.recommendationChain.call({
+      // 새로운 방식: invoke() 사용
+      const result = await this.recommendationChain.invoke({
         userQuery,
         retrievedDocs: retrievedDocsText,
         locationInfo: locationInfoStr,
       });
 
-      const recommendation = this.llmService.parseJSONResponse(result.text);
+      const recommendation = this.llmService.parseJSONResponse(result.content);
 
       this.logger.debug('추천 생성 완료');
       return recommendation;
