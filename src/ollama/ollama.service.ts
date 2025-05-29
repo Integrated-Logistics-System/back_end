@@ -9,12 +9,9 @@ type OllamaResponseItem = {
 
 @Injectable()
 export class OllamaService {
-  private baseUrl = 'http://192.168.0.111:11434';
+  private baseUrl = 'http://localhost:11434';
 
-  async generateText(
-    prompt: string,
-    model = 'gemma3:1b-it-qat',
-  ): Promise<string> {
+  async generateText(prompt: string, model = 'qwen3:1.7b'): Promise<string> {
     const response: AxiosResponse<OllamaResponseItem[]> = await axios.post(
       `${this.baseUrl}/api/generate`,
       {

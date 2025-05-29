@@ -2,14 +2,27 @@ import { Module } from '@nestjs/common';
 import { HttpModule } from '@nestjs/axios';
 import { ConfigModule } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
-// import { ElasticsearchModule } from '@nestjs/elasticsearch'; // 임시 비활성화
+import { ElasticsearchModule } from '../elasticsearch/elasticsearch.module';
 import { MongodbService } from './services/mongodb.service';
-// import { EnhancedElasticsearchService } from './services/enhanced-elasticsearch.service'; // 임시 비활성화
+import { RealDataService } from './services/real-data.service';
 import { GeocodingService } from './services/geocoding.service';
 
 @Module({
-  imports: [HttpModule, ConfigModule, MongooseModule],
-  providers: [MongodbService, GeocodingService],
-  exports: [MongodbService, GeocodingService],
+  imports: [
+    HttpModule, 
+    ConfigModule, 
+    MongooseModule,
+    ElasticsearchModule // RealDataService에서 필요
+  ],
+  providers: [
+    MongodbService, 
+    RealDataService, // 새로 추가
+    GeocodingService
+  ],
+  exports: [
+    MongodbService, 
+    RealDataService, // 새로 추가
+    GeocodingService
+  ],
 })
 export class RetrievalModule {}

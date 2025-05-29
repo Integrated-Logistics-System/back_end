@@ -68,7 +68,9 @@ export class BasicRAGService {
       return result;
     } catch (error) {
       this.logger.error('RAG 추천 실패:', error);
-      throw new Error(`RAG 추천 처리 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(
+        `RAG 추천 처리 중 오류가 발생했습니다: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -124,15 +126,18 @@ export class BasicRAGService {
       홍대입구역: { latitude: 37.557192, longitude: 126.925381 },
       신촌역: { latitude: 37.555946, longitude: 126.936893 },
       마포구: { latitude: 37.560284, longitude: 126.908755 },
-      '서울특별시 마포구 만리재로 23': { latitude: 37.560284, longitude: 126.908755 },
+      '서울특별시 마포구 만리재로 23': {
+        latitude: 37.560284,
+        longitude: 126.908755,
+      },
       '마포구 만리재로 23': { latitude: 37.560284, longitude: 126.908755 },
       '마포구 만리재로': { latitude: 37.560284, longitude: 126.908755 },
       서울시청: { latitude: 37.5665, longitude: 126.978 },
     };
 
     // 부분 매칭 시도 (상세 주소 처리)
-    const matchedKey = Object.keys(locationMap).find(key => 
-      location.includes(key) || key.includes(location)
+    const matchedKey = Object.keys(locationMap).find(
+      (key) => location.includes(key) || key.includes(location),
     );
 
     return matchedKey ? locationMap[matchedKey] : locationMap['서울시청'];
