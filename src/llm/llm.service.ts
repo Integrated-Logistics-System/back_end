@@ -12,12 +12,9 @@ export class LLMService {
   constructor(private readonly configService: ConfigService) {
     const baseUrl = this.configService.get<string>(
       'OLLAMA_BASE_URL',
-      'http://192.168.0.111:11434',
+      'http://localhost:11434',
     );
-    const model = this.configService.get<string>(
-      'OLLAMA_MODEL',
-      'granite3.3:2b',
-    );
+    const model = this.configService.get<string>('OLLAMA_MODEL', 'qwen3:1.7b');
     const embeddingModelName = this.configService.get<string>(
       'OLLAMA_EMBEDDING_MODEL',
       'granite-embedding:278m',
@@ -97,12 +94,32 @@ export class LLMService {
    */
   parseJSONResponse(response: string): any {
     try {
-      // 마크다운 코드블록 제거
-      const codeBlockMatch = response.match(/```(?:json)?\n?([\s\S]*?)```/i);
-      const jsonString = codeBlockMatch
-        ? codeBlockMatch[1].trim()
-        : response.trim();
+      // null/undefined 체크
+      if (!response) {
+        throw new Error('응답이 비어있습니다');
+      }
 
+      // 문자열로 변환
+      const responseStr = typeof response === 'string' ? response : String(response);
+      
+      this.logger.debug('파싱 대상 텍스트:', responseStr.slice(0, 200) + '...');
+
+      // 마크다운 코드블록 제거
+      const codeBlockMatch = responseStr.match(/```(?:json)?\n?([\s\S]*?)```/i);
+      let jsonString = codeBlockMatch
+        ? codeBlockMatch[1].trim()
+        : responseStr.trim();
+
+      // JSON 객체 추출 시도 (중괄호로 감싸진 부분)
+      if (!jsonString.startsWith('{')) {
+        const jsonMatch = jsonString.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          jsonString = jsonMatch[0];
+        }
+      }
+
+      this.logger.debug('최종 JSON 문자열:', jsonString);
+      
       return JSON.parse(jsonString);
     } catch (error) {
       this.logger.error('JSON 파싱 실패:', error);

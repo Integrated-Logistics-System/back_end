@@ -97,7 +97,30 @@ export class RecommendationChain {
 
       // 새로운 방식: invoke() 사용
       const result = await this.queryParsingChain.invoke({ userQuery });
-      const parsed = this.llmService.parseJSONResponse(result.content);
+      
+      // 응답 구조 디버깅
+      this.logger.debug('LLM 응답 구조:', {
+        type: typeof result,
+        keys: Object.keys(result || {}),
+        result: result
+      });
+
+      // 다양한 응답 형태 처리
+      let responseText: string;
+      if (typeof result === 'string') {
+        responseText = result;
+      } else if (result?.content) {
+        responseText = result.content;
+      } else if (result?.text) {
+        responseText = result.text;
+      } else if (result?.toString) {
+        responseText = result.toString();
+      } else {
+        throw new Error(`예상되지 않은 응답 형태: ${JSON.stringify(result)}`);
+      }
+
+      this.logger.debug('파싱할 텍스트:', responseText);
+      const parsed = this.llmService.parseJSONResponse(responseText);
 
       const parsedQuery: ParsedQuery = {
         location: parsed.location || '서울시청',
@@ -175,7 +198,21 @@ export class RecommendationChain {
         locationInfo: locationInfoStr,
       });
 
-      const recommendation = this.llmService.parseJSONResponse(result.content);
+      // 다양한 응답 형태 처리
+      let responseText: string;
+      if (typeof result === 'string') {
+        responseText = result;
+      } else if (result?.content) {
+        responseText = result.content;
+      } else if (result?.text) {
+        responseText = result.text;
+      } else if (result?.toString) {
+        responseText = result.toString();
+      } else {
+        throw new Error(`예상되지 않은 응답 형태: ${JSON.stringify(result)}`);
+      }
+
+      const recommendation = this.llmService.parseJSONResponse(responseText);
 
       this.logger.debug('추천 생성 완료');
       return recommendation;
