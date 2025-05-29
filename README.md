@@ -1,91 +1,131 @@
-# 🚀 RAG 기반 창업 자리 추천 시스템
+# 📝 TaskMind AI - 지능형 할 일 관리 백엔드 (LangGraph Edition)
 
-LangChain과 Ollama를 활용한 창업 입지 추천 백엔드 시스템입니다.
+TaskMind AI는 자연어 입력을 통해 할 일을 등록하고, **LangGraph 워크플로우**로 AI가 작업의 우선순위를 제안하거나 관련 정보를 찾아주며, 프로젝트 진행 상황에 대한 간단한 인사이트를 제공하는 스마트 할 일 관리 애플리케이션의 백엔드입니다.
 
-## 🏗️ **시스템 아키텍처**
+## 🆕 **LangGraph 업데이트**
 
-```
-사용자 질의 → RAG 시스템 → LLM 분석 → 추천 결과
-     ↓
-  쿼리 파싱
-     ↓
-  하이브리드 검색 (Elasticsearch + MongoDB)
-     ↓
-  LangChain 체인 (Ollama LLM)
-     ↓
-  캐싱 (Redis) + 최종 응답
-```
+### **주요 개선사항**
+- 🔄 **워크플로우 기반 AI**: LangGraph로 병렬 처리 및 조건부 라우팅
+- ⚡ **Qwen 2.5 0.5B**: 빠른 응답 속도 (0.5-1초)
+- 🧠 **지능적 확인**: 신뢰도 기반 사용자 확인 요청
+- 📊 **실시간 분석**: 워크플로우 각 단계별 성능 모니터링
 
-## 🔧 **기술 스택**
+## 🚀 주요 기능
 
-- **Backend**: NestJS, TypeScript
-- **AI/LLM**: LangChain, Ollama
-- **Database**: MongoDB, Elasticsearch  
-- **Cache**: Redis
-- **External API**: Naver Geocoding
+### 🤖 AI 기반 기능
+- **자연어 할 일 등록**: "다음 주 화요일에 프로젝트 제안서 관련해서 김철수 씨에게 전화하기"
+- **자동 정보 추출**: 할 일, 마감일, 관련 인물, 내용 등 핵심 정보 자동 추출
+- **우선순위 제안**: AI 기반 작업 우선순위 자동 추천
+- **프로젝트 인사이트**: 진행 상황 분석 및 지연 작업 알림
 
-## 🚦 **사전 요구사항**
+### 🔍 강력한 검색
+- **Elasticsearch 기반**: 할 일 내용, 태그, 설명 등 빠른 검색
+- **스마트 필터링**: 상태, 우선순위, 프로젝트별 필터링
+- **자동완성**: 검색 키워드 제안
 
-1. **Node.js** (v18 이상)
-2. **MongoDB** (실행 중)
-3. **Elasticsearch** (실행 중)
-4. **Redis** (실행 중)
-5. **Ollama** (실행 중, 모델 설치됨)
+### 📊 프로젝트 관리
+- **진행 상황 추적**: 실시간 프로젝트 완료율 및 통계
+- **협업 지원**: 프로젝트 협력자 관리
+- **AI 리포트**: 프로젝트 위험 요소 및 개선 제안
 
-### Ollama 모델 설치
+## 🛠️ 기술 스택
+
+- **Backend Framework**: NestJS (Node.js)
+- **Database**: MongoDB (Mongoose ODM)
+- **Search Engine**: Elasticsearch
+- **Queue/Cache**: Redis + Bull Queue
+- **AI/ML**: Langchain + Ollama (Local LLM)
+- **Authentication**: JWT + Passport
+- **Validation**: Class Validator
+- **Documentation**: Swagger/OpenAPI
+
+## 📋 사전 요구사항
+
+- Node.js (v18 이상)
+- Docker & Docker Compose
+- Ollama (로컬 LLM 서버)
+
+## 🚀 **빠른 시작 (LangGraph)**
+
 ```bash
-# Ollama 설치 후
-ollama pull gemma3:1b-it-qat
-ollama pull mxbai-embed-large
+# 1. LangGraph 통합 버전 실행
+chmod +x start-langgraph.sh
+./start-langgraph.sh
+
+# 2. 또는 수동 실행
+docker compose up -d mongodb elasticsearch redis ollama
+docker exec taskmind-ollama ollama pull qwen2.5:0.5b
+npm run start:dev
 ```
 
-## 🎯 **시작하기**
-
-### 1. 의존성 설치
+### **LangGraph 워크플로우 테스트**
 ```bash
-npm install
+# API 테스트
+curl -X POST http://localhost:3000/api/ai/test-workflow \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -d '{"input": "내일까지 김팀장님께 보고서 제출하기"}'
+
+# 응답 예시
+{
+  "input": "내일까지 김팀장님께 보고서 제출하기",
+  "result": {
+    "title": "김팀장님께 보고서 제출하기",
+    "dueDate": "2024-06-01",
+    "priority": "high",
+    "confidence": 0.85,
+    "needsConfirmation": false
+  },
+  "processingTime": "680ms",
+  "model": "qwen2.5:0.5b",
+  "workflow": "LangGraph"
+}
 ```
 
 ### 2. 환경 변수 설정
-`config/.env` 파일에서 다음 변수들을 확인/설정:
 
-```env
-# MongoDB
-MONGO_URI=mongodb://choi:chltjdgus123!@192.168.0.111:27017/real_estate_db?authSource=admin
-
-# Elasticsearch
-ELASTICSEARCH_NODE=http://192.168.0.111:9200
-
-# Redis
-REDIS_HOST=192.168.0.111
-REDIS_PORT=6379
-
-# Ollama & LangChain
-OLLAMA_BASE_URL=http://192.168.0.111:11434
-OLLAMA_MODEL=gemma3:1b-it-qat
-OLLAMA_EMBEDDING_MODEL=mxbai-embed-large
-
-# Naver API
-NAVER_CLIENT_ID=your_client_id
-NAVER_CLIENT_SECRET=your_client_secret
-
-# RAG 설정
-MAX_SEARCH_RESULTS=50
-CACHE_TTL=300
-LOG_LEVEL=debug
+```bash
+cp .env.example .env
 ```
 
-### 3. 불필요한 파일 정리 (선택 사항)
-```bash
-# 자동 정리 스크립트 실행
-npm run cleanup
+`.env` 파일을 편집하여 다음 값들을 설정하세요:
 
-# 또는 수동으로 정리
-rm -rf src/ollama src/redis
-rm -f src/recommend/*.new.ts src/recommend/*.old.ts
+```env
+# Database Configuration
+MONGODB_URI=mongodb://localhost:27017/taskmind-ai
+
+# Elasticsearch Configuration
+ELASTICSEARCH_NODE=http://localhost:9200
+
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
+JWT_EXPIRES_IN=24h
+
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=llama3.1
+
+# Application Configuration
+PORT=3000
+NODE_ENV=development
+```
+
+### 3. Ollama 및 인프라 서비스 실행 (Docker Compose)
+
+```bash
+# MongoDB, Elasticsearch, Redis, Ollama 실행
+docker-compose up -d mongodb elasticsearch redis ollama
+
+# Ollama에 모델 다운로드 (최초 실행 시)
+docker exec taskmind-ollama ollama pull llama3.1
 ```
 
 ### 4. 애플리케이션 실행
+
 ```bash
 # 개발 모드
 npm run start:dev
@@ -95,198 +135,248 @@ npm run build
 npm run start:prod
 ```
 
-## 🧪 **테스트**
+## 📡 API 엔드포인트
 
-### 1. 시스템 상태 확인
+### 🔐 인증
+- `POST /api/auth/register` - 사용자 등록
+- `POST /api/auth/login` - 로그인
+
+### 📝 할 일 관리
+- `POST /api/tasks` - 새 할 일 생성
+- `POST /api/tasks/natural-language` - 자연어로 할 일 생성
+- `GET /api/tasks` - 할 일 목록 조회
+- `GET /api/tasks/stats` - 할 일 통계
+- `GET /api/tasks/overdue` - 연체된 할 일
+- `PATCH /api/tasks/:id` - 할 일 수정
+- `DELETE /api/tasks/:id` - 할 일 삭제
+
+### 📁 프로젝트 관리
+- `POST /api/projects` - 새 프로젝트 생성
+- `GET /api/projects` - 프로젝트 목록
+- `GET /api/projects/:id/insights` - AI 프로젝트 인사이트
+- `GET /api/projects/:id/stats` - 프로젝트 통계
+- `PATCH /api/projects/:id` - 프로젝트 수정
+
+### 🔤 AI 질문 답변
+- `POST /api/ai/ask` - AI에게 질문하기
+- `GET /api/search?q=검색어` - 통합 검색
+- `GET /api/search/tasks?q=검색어` - 할 일 검색
+- `GET /api/search/projects?q=검색어` - 프로젝트 검색
+
+## 🧪 테스트
+
 ```bash
-npm run rag:health
-# 또는
-curl http://localhost:3000/api/recommend/health
+# 단위 테스트
+npm run test
+
+# E2E 테스트
+npm run test:e2e
+
+# 테스트 커버리지
+npm run test:cov
 ```
 
-### 1-1. 모든 서비스 상태 일괄 확인
+## 🐳 Docker로 전체 스택 실행
+
 ```bash
-# MongoDB 상태
-curl -f mongodb://192.168.0.111:27017/admin || echo "❌ MongoDB 연결 실패"
+# 모든 서비스 (백엔드 포함) 실행
+docker-compose --profile production up -d
 
-# Elasticsearch 상태  
-curl -f http://192.168.0.111:9200/_cluster/health || echo "❌ Elasticsearch 연결 실패"
+# 인프라만 실행 (개발용)
+docker-compose up -d mongodb elasticsearch redis ollama
+```
 
-# Redis 상태
-redis-cli -h 192.168.0.111 ping || echo "❌ Redis 연결 실패"
+## 🤖 AI 기능 사용 예시
+
+### 자연어 할 일 등록
+
+```javascript
+// POST /api/tasks/natural-language
+{
+  "input": "다음 주 화요일까지 프로젝트 제안서를 김철수 팀장님께 이메일로 보내기"
+}
+
+// Ollama AI가 자동으로 추출하는 정보:
+// - title: "프로젝트 제안서를 김철수 팀장님께 이메일로 보내기"
+// - dueDate: "2024-06-04" (다음 주 화요일)
+// - priority: "high"
+// - tags: ["이메일", "제안서"]
+// - extractedEntities: { people: ["김철수"] }
+```
+
+### AI 질문 답변
+
+```javascript
+// POST /api/ai/ask
+{
+  "question": "오늘 해야 할 가장 중요한 작업은 무엇인가요?",
+  "context": "현재 5개의 작업이 있고, 그 중 2개가 오늘 마감입니다."
+}
+
+// 응답:
+{
+  "question": "오늘 해야 할 가장 중요한 작업은 무엇인가요?",
+  "answer": "오늘 마감인 2개의 작업을 우선적으로 처리하시는 것이 좋겠습니다. 마감일이 임박한 작업들을 먼저 완료하여 일정을 준수하시기 바랍니다.",
+  "timestamp": "2024-05-29T14:30:00.000Z"
+}
+```
+
+### AI 우선순위 제안
+
+```javascript
+// GET /api/tasks/:id/suggest-priority
+{
+  "priority": "high",
+  "reasoning": "이메일 발송은 빠른 처리가 가능하며, 팀장님께 보내는 제안서는 중요한 업무입니다."
+}
+```
+
+### 프로젝트 AI 인사이트
+
+```javascript
+// GET /api/projects/:id/insights
+{
+  "summary": "프로젝트는 순조롭게 진행되고 있으나 몇 가지 지연 요소가 있습니다.",
+  "risks": [
+    "3개의 작업이 마감일을 초과했습니다",
+    "핵심 작업의 의존성 체인이 길어 병목 현상 가능성이 있습니다"
+  ],
+  "suggestions": [
+    "연체된 작업들의 우선순위를 재조정해보세요",
+    "병렬 처리가 가능한 작업들을 분리하여 진행하세요"
+  ],
+  "estimatedCompletion": "2024-06-15T00:00:00.000Z"
+}
+```
+
+## 📊 모니터링 및 로깅
+
+### 애플리케이션 상태 확인
+```bash
+# 헬스 체크
+curl http://localhost:3000/api/health
 
 # Ollama 상태
-curl -f http://192.168.0.111:11434/api/tags || echo "❌ Ollama 연결 실패"
+curl http://localhost:11434/api/tags
+curl http://localhost:9200/_cluster/health
+
+# MongoDB 상태
+docker exec taskmind-mongodb mongosh --eval "db.adminCommand('ismaster')"
 ```
 
-### 2. 간단한 테스트
+### 로그 확인
 ```bash
-npm run rag:test
-# 또는
-curl http://localhost:3000/api/recommend/test
+# 애플리케이션 로그
+npm run start:dev
+
+# Docker 컨테이너 로그
+docker-compose logs -f mongodb
+docker-compose logs -f elasticsearch
+docker-compose logs -f redis
 ```
 
-### 3. 전체 RAG 시스템 테스트
+## 🔧 개발 도구
+
+### 데이터베이스 스키마 확인
 ```bash
-npm run test:rag
+# MongoDB 컬렉션 확인
+docker exec -it taskmind-mongodb mongosh taskmind-ai --eval "show collections"
+
+# 인덱스 확인
+docker exec -it taskmind-mongodb mongosh taskmind-ai --eval "db.tasks.getIndexes()"
 ```
 
-### 4. 직접 API 호출 테스트
+### Elasticsearch 인덱스 관리
 ```bash
-curl -X POST http://localhost:3000/api/recommend \
-  -H "Content-Type: application/json" \
-  -d '{"text": "강남역 근처 카페 창업하고 싶어요"}'
-```
+# 인덱스 목록 확인
+curl http://localhost:9200/_cat/indices?v
 
-## 📚 **API 문서**
+# 매핑 확인
+curl http://localhost:9200/tasks/_mapping?pretty
 
-서버 실행 후 다음 URL에서 Swagger 문서 확인:
-- **API 문서**: http://localhost:3000/api/docs
-- **헬스체크**: http://localhost:3000/api/recommend/health
-- **테스트**: http://localhost:3000/api/recommend/test
-
-## 🔍 **API 엔드포인트**
-
-### POST /api/recommend
-창업 자리 추천 요청
-
-**Request:**
-```json
+# 검색 테스트
+curl -X POST "http://localhost:9200/tasks/_search?pretty" -H 'Content-Type: application/json' -d'
 {
-  "text": "강남역 근처 카페 창업하고 싶어요"
-}
+  "query": {
+    "match": {
+      "title": "테스트"
+    }
+  }
+}'
 ```
 
-**Response:**
-```json
-{
-  "input_latitude": 37.497952,
-  "input_longitude": 127.027619,
-  "radius_min_meters": 500,
-  "radius_max_meters": 1000,
-  "category": "카페",
-  "recommendation": {
-    "building": "강남 CGV 상가",
-    "address": "서울특별시 강남구 테헤란로 123",
-    "score": 8.5,
-    "reasons": [
-      "지하철역 도보 2분 거리",
-      "주변 카페 밀도 적정",
-      "오피스 밀집 지역으로 평일 수요 높음"
-    ]
-  },
-  "llm_comment": "강남역 인근은 직장인과 유동인구가 많아 카페 창업에 유리한 입지입니다."
-}
-```
+## 🚨 트러블슈팅
 
-### GET /api/recommend/health
-시스템 상태 확인
+### 일반적인 문제들
 
-### GET /api/recommend/test
-간단한 테스트 요청
-
-## 🏗️ **프로젝트 구조**
-
-```
-src/
-├── rag/                    # RAG 핵심 모듈
-│   ├── chains/            # LangChain 체인들
-│   ├── retrievers/        # 검색기들
-│   ├── prompts/           # 프롬프트 템플릿
-│   └── types/             # RAG 타입 정의
-├── llm/                   # LLM 서비스 (Ollama)
-├── retrieval/             # 데이터 검색 계층
-│   └── services/          # MongoDB, Elasticsearch, Geocoding
-├── cache/                 # Redis 캐싱
-├── recommend/             # 추천 API 엔드포인트
-└── config/                # 설정 관리
-```
-
-## 🔧 **개발 가이드**
-
-### 1. 새로운 프롬프트 추가
-`src/rag/prompts/index.ts`에서 PromptTemplate 추가
-
-### 2. 검색 로직 수정
-`src/rag/retrievers/hybrid.retriever.ts`에서 검색 전략 수정
-
-### 3. LLM 모델 변경
-`config/.env`에서 `OLLAMA_MODEL` 변경
-
-### 4. 캐싱 전략 수정
-`src/cache/cache.service.ts`에서 TTL 및 키 전략 수정
-
-### 💡 **개발 팁**
-
-#### Hot Reload 최적화
+**1. Elasticsearch 연결 오류**
 ```bash
-# TypeScript 컴파일 속도 향상
-npm run start:dev -- --preserveWatchOutput
+# Elasticsearch 컨테이너 상태 확인
+docker-compose ps elasticsearch
 
-# 특정 모듈만 재시작
-npm run start:dev -- --watch --watchAssets
+# 로그 확인
+docker-compose logs elasticsearch
+
+# 재시작
+docker-compose restart elasticsearch
 ```
 
-#### 디버깅 모드
+**2. MongoDB 연결 오류**
 ```bash
-# 상세 로그 활성화
-DEBUG=rag:* npm run start:dev
+# MongoDB 컨테이너 확인
+docker-compose ps mongodb
 
-# LangChain 디버그 모드
-LANGCHAIN_VERBOSE=true npm run start:dev
+# 연결 테스트
+docker exec taskmind-mongodb mongosh --eval "db.adminCommand('ping')"
 ```
 
-#### 성능 프로파일링
+**3. Ollama 연결 오류**
 ```bash
-# 메모리 사용량 모니터링
-node --inspect=0.0.0.0:9229 dist/main.js
+# Ollama 컨테이너 확인
+docker-compose ps ollama
 
-# CPU 프로파일링
-node --prof dist/main.js
+# 로그 확인
+docker-compose logs ollama
+
+# 모델 다운로드 확인
+docker exec taskmind-ollama ollama list
+
+# 모델 다운로드
+docker exec taskmind-ollama ollama pull llama3.1
 ```
 
-## 🚨 **문제 해결**
-
-### 1. Ollama 연결 실패
+**4. 패키지 설치 오류**
 ```bash
-# Ollama 서비스 상태 확인
-curl http://192.168.0.111:11434/api/tags
-
-# 모델 재설치
-ollama pull gemma3:1b-it-qat
+# 캐시 정리 후 재설치
+rm -rf node_modules package-lock.json
+npm cache clean --force
+npm install
 ```
 
-### 2. MongoDB/Elasticsearch 연결 실패
-- 서비스 실행 상태 확인
-- 네트워크 연결 확인
-- 인증 정보 확인
+## 🤝 기여하기
 
-### 3. Redis 연결 실패
-```bash
-# Redis 서비스 확인
-redis-cli -h 192.168.0.111 ping
-```
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📊 **성능 최적화**
+## 📄 라이선스
 
-1. **캐싱**: 동일한 쿼리는 5분간 캐싱
-2. **검색 제한**: 최대 50개 결과로 제한
-3. **배치 처리**: 3개씩 청크 단위로 처리
-4. **프롬프트 최적화**: 간결하고 명확한 프롬프트 사용
+이 프로젝트는 MIT 라이선스 하에 있습니다. 자세한 내용은 [LICENSE](LICENSE) 파일을 참조하세요.
 
-## 🤝 **기여 가이드**
+## 📞 지원
 
-1. 이슈 등록
-2. 기능 브랜치 생성
-3. 코드 작성 및 테스트
-4. Pull Request 생성
-
-## 📝 **라이센스**
-
-UNLICENSED
+문제가 있거나 질문이 있으시면 [이슈](https://github.com/your-repo/taskmind-backend/issues)를 생성해 주세요.
 
 ---
 
-**개발자**: 최성현  
-**이메일**: your.email@example.com  
-**버전**: 1.0.0
+### 🔧 **개발 팁**
+
+- 로컬 LLM을 위해 Ollama 서버 실행 필수
+- Elasticsearch 인덱스는 첫 실행 시 자동 생성
+- Redis는 백그라운드 작업과 캐싱에 사용
+- Ollama 모델은 첫 실행 시 자동 다운로드 (시간이 다소 소요될 수 있음)
+- llama3.1 모델 외에도 다른 모델 사용 가능 (qwen, mistral, codellama 등)
+
+**TaskMind AI** - 더 스마트한 할 일 관리의 시작 🚀

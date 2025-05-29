@@ -1,0 +1,100 @@
+version: '3.8'
+
+services:
+  # MongoDB
+  mongodb:
+    image: mongo:7.0
+    container_name: taskmind-mongodb
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password123
+      MONGO_INITDB_DATABASE: taskmind-ai
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - taskmind-network
+
+  # Elasticsearch
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: taskmind-elasticsearch
+    restart: always
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - taskmind-network
+
+  /var/services/homes/choi/infra/docker
+
+
+  # Ollama
+  ollama:
+    image: ollama/ollama:latest
+    container_name: taskmind-ollama
+    restart: always
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - taskmind-network
+
+  # Redis
+  redis:
+    image: redis:7.2-alpine
+    container_name: taskmind-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - taskmind-network
+
+  # NestJS Backend (optional - for production)
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: taskmind-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - MONGODB_URI=mongodb://admin:password123@mongodb:27017/taskmind-ai?authSource=admin
+      - ELASTICSEARCH_NODE=http://elasticsearch:9200
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=qwen2.5:0.5b
+    depends_on:
+      - mongodb
+      - elasticsearch
+      - redis
+      - ollama
+    networks:
+      - taskmind-network
+    profiles:
+      - production
+
+volumes:
+  mongodb_data:
+  elasticsearch_data:
+  redis_data:
+  ollama_data:
+
+networks:
+  taskmind-network:
+    driver: bridge

@@ -1,38 +1,44 @@
-import { Module } from '@nestjs/common';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MongooseModule } from '@nestjs/mongoose';
-import configuration from '../config/configuration';
-import { AppController } from './app.controller';
-import { AppService } from './app.service';
-import { BuildingsModule } from './buildings/buildings.module';
-import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
-import { MarketsModule } from './markets/markets.module';
-import { NaverModule } from './naver/naver.module';
-import { RecommendModule } from './recommend/recommend.module';
-import { RAGModule } from './rag/rag.module';
-import { LLMModule } from './llm/llm.module';
+import { Module } from "@nestjs/common";
+import { ConfigModule } from "@nestjs/config";
+import { MongooseModule } from "@nestjs/mongoose";
+import { ElasticsearchModule } from "@nestjs/elasticsearch";
+import { BullModule } from "@nestjs/bull";
+import { AppController } from "./app.controller";
+import { AppService } from "./app.service";
+import { AuthModule } from "./auth/auth.module";
+import { UsersModule } from "./users/users.module";
+import { TasksModule } from "./tasks/tasks.module";
+import { ProjectsModule } from "./projects/projects.module";
+import { AiModule } from "./ai/ai.module";
+import { SearchModule } from "./search/search.module";
+import { databaseConfig } from "./config/database.config";
+import { elasticsearchConfig } from "./config/elasticsearch.config";
+import { redisConfig } from "./config/redis.config";
 
 @Module({
   imports: [
+    // Configuration
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [configuration],
-      envFilePath: './config/.env',
+      envFilePath: ".env",
     }),
-    MongooseModule.forRootAsync({
-      imports: [ConfigModule],
-      inject: [ConfigService],
-      useFactory: (configService: ConfigService) => ({
-        uri: configService.get<string>('mongoUri'),
-      }),
-    }),
-    BuildingsModule,
-    MarketsModule,
-    NaverModule,
-    RecommendModule,
-    RAGModule,
-    LLMModule,
-    // ElasticsearchModule.forRoot(), // 임시 비활성화
+
+    // Database
+    MongooseModule.forRootAsync(databaseConfig()),
+
+    // Elasticsearch
+    ElasticsearchModule.registerAsync(elasticsearchConfig()),
+
+    // Redis/Bull Queue
+    BullModule.forRootAsync(redisConfig()),
+
+    // Feature Modules
+    AuthModule,
+    UsersModule,
+    TasksModule,
+    ProjectsModule,
+    AiModule,
+    SearchModule,
   ],
   controllers: [AppController],
   providers: [AppService],
