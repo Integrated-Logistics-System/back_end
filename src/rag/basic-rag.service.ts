@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { LLMChain } from 'langchain/chains';
-import { LLMService } from '../llm/llm.service';
+import { Runnable } from '@langchain/core/runnables';
+import { LLMService } from '@/llm/llm.service';
 import { QUERY_PARSING_PROMPT, RECOMMENDATION_PROMPT } from './prompts';
 import {
   RAGResponse,
@@ -11,20 +11,18 @@ import {
 @Injectable()
 export class BasicRAGService {
   private readonly logger = new Logger(BasicRAGService.name);
-  private queryParsingChain: LLMChain;
-  private recommendationChain: LLMChain;
+  private readonly queryParsingChain: Runnable;
+  private readonly recommendationChain: Runnable;
 
   constructor(private readonly llmService: LLMService) {
-    // LangChain 체인 초기화
-    this.queryParsingChain = new LLMChain({
-      llm: this.llmService.getChatModel(),
-      prompt: QUERY_PARSING_PROMPT,
-    });
+    // 최신 LangChain 방식: Prompt.pipe(LLM) 체인 초기화
+    this.queryParsingChain = QUERY_PARSING_PROMPT.pipe(
+      this.llmService.getChatModel(),
+    );
 
-    this.recommendationChain = new LLMChain({
-      llm: this.llmService.getChatModel(),
-      prompt: RECOMMENDATION_PROMPT,
-    });
+    this.recommendationChain = RECOMMENDATION_PROMPT.pipe(
+      this.llmService.getChatModel(),
+    );
   }
 
   /**
@@ -75,12 +73,28 @@ export class BasicRAGService {
   }
 
   /**
-   * 사용자 쿼리를 파싱하여 구조화된 데이터로 변환
+   * 사용자 쿼리를 파싱하여 구조화된 데이터로 변환 - 최신 LangChain 방식
    */
   private async parseUserQuery(userQuery: string): Promise<ParsedQuery> {
     try {
-      const result = await this.queryParsingChain.call({ userQuery });
-      const parsed = this.llmService.parseJSONResponse(result.text);
+      // 새로운 방식: invoke() 사용
+      const result = await this.queryParsingChain.invoke({ userQuery });
+
+      // 다양한 응답 형태 처리
+      let responseText: string;
+      if (typeof result === 'string') {
+        responseText = result;
+      } else if (result?.content) {
+        responseText = result.content;
+      } else if (result?.text) {
+        responseText = result.text;
+      } else if (result?.toString) {
+        responseText = result.toString();
+      } else {
+        throw new Error(`예상되지 않은 응답 형태: ${JSON.stringify(result)}`);
+      }
+
+      const parsed = this.llmService.parseJSONResponse(responseText);
 
       return {
         location: parsed.location || '서울시청',
@@ -110,10 +124,18 @@ export class BasicRAGService {
       홍대입구역: { latitude: 37.557192, longitude: 126.925381 },
       신촌역: { latitude: 37.555946, longitude: 126.936893 },
       마포구: { latitude: 37.560284, longitude: 126.908755 },
+      '서울특별시 마포구 만리재로 23': { latitude: 37.560284, longitude: 126.908755 },
+      '마포구 만리재로 23': { latitude: 37.560284, longitude: 126.908755 },
+      '마포구 만리재로': { latitude: 37.560284, longitude: 126.908755 },
       서울시청: { latitude: 37.5665, longitude: 126.978 },
     };
 
-    return locationMap[location] || locationMap['서울시청'];
+    // 부분 매칭 시도 (상세 주소 처리)
+    const matchedKey = Object.keys(locationMap).find(key => 
+      location.includes(key) || key.includes(location)
+    );
+
+    return matchedKey ? locationMap[matchedKey] : locationMap['서울시청'];
   }
 
   /**
@@ -150,7 +172,7 @@ export class BasicRAGService {
   }
 
   /**
-   * LLM을 통한 추천 생성
+   * LLM을 통한 추천 생성 - 최신 LangChain 방식
    */
   private async generateRecommendation(
     userQuery: string,
@@ -160,13 +182,28 @@ export class BasicRAGService {
     try {
       const locationInfoStr = JSON.stringify(locationInfo);
 
-      const result = await this.recommendationChain.call({
+      // 새로운 방식: invoke() 사용
+      const result = await this.recommendationChain.invoke({
         userQuery,
         retrievedDocs,
         locationInfo: locationInfoStr,
       });
 
-      return this.llmService.parseJSONResponse(result.text);
+      // 다양한 응답 형태 처리
+      let responseText: string;
+      if (typeof result === 'string') {
+        responseText = result;
+      } else if (result?.content) {
+        responseText = result.content;
+      } else if (result?.text) {
+        responseText = result.text;
+      } else if (result?.toString) {
+        responseText = result.toString();
+      } else {
+        throw new Error(`예상되지 않은 응답 형태: ${JSON.stringify(result)}`);
+      }
+
+      return this.llmService.parseJSONResponse(responseText);
     } catch (error) {
       this.logger.error('추천 생성 실패:', error);
 
