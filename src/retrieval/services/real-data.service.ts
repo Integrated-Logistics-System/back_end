@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { ElasticsearchService } from '../elasticsearch/elasticsearch.service';
+import { ElasticsearchService } from '@/elasticsearch/elasticsearch.service';
 
 export interface BuildingData {
   dong_name: string;
@@ -154,8 +154,8 @@ export class RealDataService {
         }
       });
 
-      const buildings = response.body.hits.hits.map((hit: any) => hit._source as BuildingData);
-      const total = response.body.hits.total.value;
+      const buildings = response.hits.hits.map((hit: any) => hit._source as BuildingData);
+      const total = typeof response.hits.total === 'number' ? response.hits.total : response.hits.total.value;
 
       this.logger.debug(`건물 검색 완료: ${total}개 중 ${buildings.length}개 반환`);
 
@@ -247,8 +247,8 @@ export class RealDataService {
         }
       });
 
-      const shops = response.body.hits.hits.map((hit: any) => hit._source as ShopData);
-      const total = response.body.hits.total.value;
+      const shops = response.hits.hits.map((hit: any) => hit._source as ShopData);
+      const total = typeof response.hits.total === 'number' ? response.hits.total : response.hits.total.value;
 
       this.logger.debug(`상가 검색 완료: ${total}개 중 ${shops.length}개 반환`);
 
@@ -295,8 +295,8 @@ export class RealDataService {
       });
 
       return {
-        large_categories: response.body.aggregations.category_large_stats.buckets,
-        middle_categories: response.body.aggregations.category_middle_stats.buckets
+        large_categories: response.aggregations?.category_large_stats?.buckets || [],
+        middle_categories: response.aggregations?.category_middle_stats?.buckets || []
       };
 
     } catch (error) {
@@ -350,14 +350,14 @@ export class RealDataService {
       return {
         radius,
         center: { latitude, longitude },
-        buildings_count: buildingsCount.body.hits.total.value,
-        shops_count: shopsCount.body.hits.total.value,
+        buildings_count: typeof buildingsCount.hits.total === 'number' ? buildingsCount.hits.total : buildingsCount.hits.total.value,
+        shops_count: typeof shopsCount.hits.total === 'number' ? shopsCount.hits.total : shopsCount.hits.total.value,
         density_score: this.calculateDensityScore(
-          buildingsCount.body.hits.total.value,
-          shopsCount.body.hits.total.value,
+          typeof buildingsCount.hits.total === 'number' ? buildingsCount.hits.total : buildingsCount.hits.total.value,
+          typeof shopsCount.hits.total === 'number' ? shopsCount.hits.total : shopsCount.hits.total.value,
           radius
         ),
-        top_categories: shopsCount.body.aggregations.categories.buckets
+        top_categories: shopsCount.aggregations?.categories?.buckets || []
       };
 
     } catch (error) {
@@ -400,8 +400,9 @@ export class RealDataService {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await this.elasticsearchService.getClient().cluster.health();
-      return response.body.status === 'green' || response.body.status === 'yellow';
+      const response = await this.elasticsearchService.clusterHealth();
+      const status = response.status;
+      return status === 'green' || status === 'yellow';
     } catch (error) {
       this.logger.error('Elasticsearch 헬스체크 실패:', error);
       return false;

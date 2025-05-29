@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { BaseRetriever } from '@langchain/core/retrievers';
 import { Document } from '@langchain/core/documents';
-import { RealDataService } from '../../retrieval/services/real-data.service';
-import { MongodbService } from '../../retrieval/services/mongodb.service';
-import { GeocodingService } from '../../retrieval/services/geocoding.service';
+import { RealDataService } from '@/retrieval/services/real-data.service';
+import { MongodbService } from '@/retrieval/services/mongodb.service';
+import { GeocodingService } from '@/retrieval/services/geocoding.service';
 import { LocationQuery, RetrievedDocument } from '../types/rag.types';
 
 @Injectable()
@@ -41,7 +41,10 @@ export class HybridRetriever extends BaseRetriever {
           locationQuery.latitude = coordinates.latitude;
           locationQuery.longitude = coordinates.longitude;
         } catch (error) {
-          this.logger.warn('좌표 변환 실패, 텍스트 검색으로 진행:', error.message);
+          this.logger.warn(
+            '좌표 변환 실패, 텍스트 검색으로 진행:',
+            error.message,
+          );
         }
       }
 
@@ -77,7 +80,7 @@ export class HybridRetriever extends BaseRetriever {
           locationQuery.latitude = coordinates.latitude;
           locationQuery.longitude = coordinates.longitude;
         } catch (error) {
-          this.logger.warn('좌표 변환 실패:', error.message);
+          this.logger.warn('좌표 변환 실패:', error instanceof Error ? error.message : String(error));
         }
       }
 
@@ -104,7 +107,7 @@ export class HybridRetriever extends BaseRetriever {
         longitude: locationQuery.longitude,
         radius: locationQuery.radius || 1000,
         category: locationQuery.category,
-        limit: 20
+        limit: 20,
       });
 
       const results: RetrievedDocument[] = [];
@@ -118,16 +121,20 @@ export class HybridRetriever extends BaseRetriever {
             source: 'building' as const,
             category: building.purpose_category_name,
             address: `${building.dong_name} ${building.jibun}`,
-            coordinates: [building.longitude, building.latitude] as [number, number],
+            coordinates: [building.longitude, building.latitude] as [
+              number,
+              number,
+            ],
             relevanceScore: 0.8, // 건물은 기본 점수
-            distance: locationQuery.latitude && locationQuery.longitude
-              ? this.geocodingService.calculateDistance(
-                  locationQuery.latitude,
-                  locationQuery.longitude,
-                  building.latitude,
-                  building.longitude,
-                )
-              : undefined,
+            distance:
+              locationQuery.latitude && locationQuery.longitude
+                ? this.geocodingService.calculateDistance(
+                    locationQuery.latitude,
+                    locationQuery.longitude,
+                    building.latitude,
+                    building.longitude,
+                  )
+                : undefined,
           },
         });
       });
@@ -135,7 +142,8 @@ export class HybridRetriever extends BaseRetriever {
       // 3. 상가 데이터 변환
       searchResult.shops.forEach((shop, index) => {
         results.push({
-          id: shop.shop_id || `shop_${index}_${shop.latitude}_${shop.longitude}`,
+          id:
+            shop.shop_id || `shop_${index}_${shop.latitude}_${shop.longitude}`,
           content: this.formatShopContent(shop),
           metadata: {
             source: 'shop' as const,
@@ -143,14 +151,15 @@ export class HybridRetriever extends BaseRetriever {
             address: shop.full_address,
             coordinates: [shop.longitude, shop.latitude] as [number, number],
             relevanceScore: this.calculateShopRelevance(shop, locationQuery),
-            distance: locationQuery.latitude && locationQuery.longitude
-              ? this.geocodingService.calculateDistance(
-                  locationQuery.latitude,
-                  locationQuery.longitude,
-                  shop.latitude,
-                  shop.longitude,
-                )
-              : undefined,
+            distance:
+              locationQuery.latitude && locationQuery.longitude
+                ? this.geocodingService.calculateDistance(
+                    locationQuery.latitude,
+                    locationQuery.longitude,
+                    shop.latitude,
+                    shop.longitude,
+                  )
+                : undefined,
           },
         });
       });
@@ -164,13 +173,14 @@ export class HybridRetriever extends BaseRetriever {
       // 5. 결과 정렬
       const sortedResults = this.sortResults(results, locationQuery);
 
-      this.logger.debug(`하이브리드 검색 완료: 건물 ${searchResult.buildings.length}개, 상가 ${searchResult.shops.length}개`);
+      this.logger.debug(
+        `하이브리드 검색 완료: 건물 ${searchResult.buildings.length}개, 상가 ${searchResult.shops.length}개`,
+      );
 
       return sortedResults.slice(0, 20);
-
     } catch (error) {
       this.logger.error('하이브리드 검색 수행 실패:', error);
-      
+
       // 폴백: MongoDB 검색
       this.logger.warn('Elasticsearch 실패, MongoDB 폴백 검색 시도');
       return await this.searchMongoDB(locationQuery);
@@ -185,9 +195,11 @@ export class HybridRetriever extends BaseRetriever {
 
     // 카테고리 매칭 보너스
     if (query.category) {
-      if (shop.category_large?.includes(query.category) ||
-          shop.category_middle?.includes(query.category) ||
-          shop.category_small?.includes(query.category)) {
+      if (
+        shop.category_large?.includes(query.category) ||
+        shop.category_middle?.includes(query.category) ||
+        shop.category_small?.includes(query.category)
+      ) {
         score += 0.5;
       }
     }
@@ -259,8 +271,10 @@ export class HybridRetriever extends BaseRetriever {
       }
 
       // 중복 제거
-      const uniqueResults = mongoResults.filter((doc, index, arr) => 
-        arr.findIndex(d => d._id.toString() === doc._id.toString()) === index
+      const uniqueResults = mongoResults.filter(
+        (doc, index, arr) =>
+          arr.findIndex((d) => d._id.toString() === doc._id.toString()) ===
+          index,
       );
 
       return uniqueResults.map((doc) => ({
@@ -319,12 +333,32 @@ export class HybridRetriever extends BaseRetriever {
   private async parseQuery(query: string): Promise<LocationQuery> {
     // 간단한 파싱 로직
     const locationKeywords = [
-      '역', '구', '동', '시청', '홍대', '강남', '신촌', '이태원',
-      '마포구', '서울특별시', '만리재로'
+      '역',
+      '구',
+      '동',
+      '시청',
+      '홍대',
+      '강남',
+      '신촌',
+      '이태원',
+      '마포구',
+      '서울특별시',
+      '만리재로',
     ];
     const categoryKeywords = [
-      '카페', '음식점', '식당', '치킨', '피자', '햄버거', '편의점', '서점',
-      '음식', '스포츠', '미용', '의료', '교육'
+      '카페',
+      '음식점',
+      '식당',
+      '치킨',
+      '피자',
+      '햄버거',
+      '편의점',
+      '서점',
+      '음식',
+      '스포츠',
+      '미용',
+      '의료',
+      '교육',
     ];
     const radiusKeywords = { 근처: 1000, 가까운: 500, 주변: 1500, 멀리: 2000 };
 
@@ -334,11 +368,12 @@ export class HybridRetriever extends BaseRetriever {
 
     // 위치 추출 - 더 정확한 매칭
     const fullQuery = query.toLowerCase();
-    
+
     // 상세 주소 패턴 체크
-    const addressPattern = /(서울특별시|서울시)?\s*([가-힣]+구)\s*([가-힣]+로|[가-힣]+길)?\s*(\d+)?/;
+    const addressPattern =
+      /(서울특별시|서울시)?\s*([가-힣]+구)\s*([가-힣]+로|[가-힣]+길)?\s*(\d+)?/;
     const addressMatch = query.match(addressPattern);
-    
+
     if (addressMatch) {
       location = addressMatch[0].trim();
     } else {
@@ -417,8 +452,10 @@ export class HybridRetriever extends BaseRetriever {
       ]);
 
       const isHealthy = realDataHealth && mongoHealth && geoHealth;
-      this.logger.debug(`하이브리드 검색 헬스체크: RealData=${realDataHealth}, Mongo=${mongoHealth}, Geo=${geoHealth}`);
-      
+      this.logger.debug(
+        `하이브리드 검색 헬스체크: RealData=${realDataHealth}, Mongo=${mongoHealth}, Geo=${geoHealth}`,
+      );
+
       return isHealthy;
     } catch (error) {
       this.logger.error('하이브리드 검색 헬스체크 실패:', error);
