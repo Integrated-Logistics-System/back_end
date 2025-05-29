@@ -18,9 +18,22 @@ export default () => ({
     password: process.env.ELASTICSEARCH_PASSWORD,
   },
 
-  // Ollama
+  // Ollama & LangChain
   ollama: {
     baseUrl: process.env.OLLAMA_BASE_URL || 'http://localhost:11434',
-    model: process.env.OLLAMA_MODEL || 'phi4-mini-reasoning:3.8b',
+    model: process.env.OLLAMA_MODEL || 'gemma3:1b-it-qat',
+    embeddingModel: process.env.OLLAMA_EMBEDDING_MODEL || 'mxbai-embed-large',
+  },
+
+  // Naver API
+  naver: {
+    clientId: process.env.NAVER_CLIENT_ID,
+    clientSecret: process.env.NAVER_CLIENT_SECRET,
+  },
+
+  // RAG 설정
+  rag: {
+    maxSearchResults: parseInt(process.env.MAX_SEARCH_RESULTS || '50', 10),
+    cacheTtl: parseInt(process.env.CACHE_TTL || '300', 10),
   },
 });

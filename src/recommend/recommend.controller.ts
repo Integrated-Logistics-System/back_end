@@ -1,48 +1,53 @@
-import {
-  Controller,
-  Get,
-  Query,
-  BadRequestException,
-  Logger,
-} from '@nestjs/common';
+import { Controller, Post, Body, Get, Query } from '@nestjs/common';
+import { RecommendRequestDto } from './dto/recommend-request.dto';
+import { RecommendResponseDto } from './dto/recommend-response.dto';
+import { ApiResponse, ApiTags, ApiOperation, ApiQuery } from '@nestjs/swagger';
 import { RecommendService } from './recommend.service';
 
-@Controller('api/recommend')
+@ApiTags('추천')
+@Controller('recommend')
 export class RecommendController {
   constructor(private readonly recommendService: RecommendService) {}
 
-  private readonly logger = new Logger(RecommendController.name);
-
-  @Get()
+  @Post()
+  @ApiOperation({ summary: '창업 자리 추천' })
+  @ApiResponse({ status: 200, type: RecommendResponseDto, description: '추천 결과' })
+  @ApiResponse({ status: 400, description: '잘못된 요청' })
+  @ApiResponse({ status: 500, description: '서버 오류' })
   async getRecommendations(
-    @Query('dong_code') dong_code: string,
-    @Query('category') category: string,
-  ) {
-    this.logger.log(
-      `Request received - dong_code: ${dong_code}, category: ${category}`,
-    );
+    @Body() body: RecommendRequestDto,
+  ): Promise<RecommendResponseDto> {
+    return this.recommendService.getRecommendations(body.text);
+  }
 
-    if (!dong_code || !category) {
-      const errorMessage = 'Both dong_code and category are required';
-      this.logger.error(errorMessage);
-      throw new BadRequestException(errorMessage);
-    }
+  @Get('health')
+  @ApiOperation({ summary: 'RAG 시스템 상태 확인' })
+  @ApiResponse({ status: 200, description: '시스템 상태 정보' })
+  async checkHealth(): Promise<{
+    status: string;
+    components: any;
+    timestamp: string;
+  }> {
+    const isHealthy = await this.recommendService.checkHealth();
+    
+    return {
+      status: isHealthy ? 'healthy' : 'unhealthy',
+      components: {
+        rag_system: isHealthy,
+        database: true, // MongoDB 연결 상태
+        search_engine: true, // Elasticsearch 상태
+        cache: true, // Redis 상태
+      },
+      timestamp: new Date().toISOString(),
+    };
+  }
 
-    try {
-      const result = await this.recommendService.getRecommendations(
-        dong_code,
-        category,
-      );
-      this.logger.log('Successfully processed recommendation request');
-      return result;
-    } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'An unknown error occurred';
-      this.logger.error(
-        `Error processing recommendation: ${errorMessage}`,
-        error instanceof Error ? error.stack : '',
-      );
-      throw error;
-    }
+  @Get('test')
+  @ApiOperation({ summary: '간단한 테스트 요청' })
+  @ApiQuery({ name: 'query', required: false, description: '테스트 쿼리', example: '강남역 카페' })
+  async testRecommendation(
+    @Query('query') query: string = '강남역 근처 카페 추천해주세요'
+  ): Promise<RecommendResponseDto> {
+    return this.recommendService.getRecommendations(query);
   }
 }

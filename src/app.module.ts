@@ -7,8 +7,10 @@ import { AppService } from './app.service';
 import { BuildingsModule } from './buildings/buildings.module';
 import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
 import { MarketsModule } from './markets/markets.module';
-import { OllamaModule } from './ollama/ollama.module';
+import { NaverModule } from './naver/naver.module';
 import { RecommendModule } from './recommend/recommend.module';
+import { RAGModule } from './rag/rag.module';
+import { LLMModule } from './llm/llm.module';
 
 @Module({
   imports: [
@@ -26,10 +28,11 @@ import { RecommendModule } from './recommend/recommend.module';
     }),
     BuildingsModule,
     MarketsModule,
+    NaverModule,
     RecommendModule,
-    // RedisModule,  // 임시로 주석 처리
-    ElasticsearchModule.forRoot(),
-    OllamaModule,
+    RAGModule,
+    LLMModule,
+    // ElasticsearchModule.forRoot(), // 임시 비활성화
   ],
   controllers: [AppController],
   providers: [AppService],

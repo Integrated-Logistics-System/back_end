@@ -42,27 +42,31 @@ async function bootstrap() {
 
   // Swagger 설정
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('상가 추천 시스템 API')
-    .setDescription('상가 추천 시스템을 위한 API 문서')
+    .setTitle('RAG 기반 창업 자리 추천 시스템 API')
+    .setDescription('LangChain과 Ollama를 활용한 창업 입지 추천 시스템 API')
     .setVersion('1.0')
-    .addTag('recommend', '상가 추천 API')
+    .addTag('추천', 'RAG 기반 창업 자리 추천 API')
     .addTag('markets', '상가 정보 API')
     .addTag('buildings', '건물 정보 API')
     .addTag('search', '검색 API')
     .addTag('health', '헬스 체크 API')
-    .addTag('admin', '관리자 API')
-    .addBearerAuth()
+    .addServer('http://localhost:3000', '개발 서버')
     .build();
 
   const document = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup('docs', app, document);
+  SwaggerModule.setup('api/docs', app, document);
 
   // Ollama 서비스는 모듈 초기화 시 qwen3:1.7b 모델을 자동으로 로드함
   // LangChain을 통해 Ollama 연동
   // 구현은 OllamaService의 onModuleInit() 메서드에서 처리
 
   await app.listen(port);
-  logger.log(`애플리케이션이 포트 ${port}에서 실행 중입니다`);
+  logger.log(
+    `🚀 RAG 기반 창업 자리 추천 시스템이 포트 ${port}에서 실행 중입니다`,
+  );
+  logger.log(`📚 API 문서: http://localhost:${port}/api/docs`);
+  logger.log(`🔍 테스트: http://localhost:${port}/api/recommend/test`);
+  logger.log(`❤️  헬스체크: http://localhost:${port}/api/recommend/health`);
 }
 
 bootstrap().catch((err: unknown) => {

@@ -1,0 +1,4017 @@
+=== TypeScript Files Combined on Thu May 29 07:35:24 KST 2025 ===
+=======================================
+
+
+
+
+=== File: src/buildings/buildings.controller.ts ===
+=======================================
+import { Controller, Get, Param } from '@nestjs/common';
+import { BuildingsService } from './buildings.service';
+import { Building } from './schemas/building.schema';
+
+@Controller('api/buildings')
+export class BuildingsController {
+  constructor(private readonly buildingsService: BuildingsService) {}
+
+  @Get()
+  async getAllBuildings(): Promise<Building[]> {
+    return this.buildingsService.findAll();
+  }
+
+  @Get(':id')
+  async getBuilding(@Param('id') id: string): Promise<Building> {
+    return this.buildingsService.findOne(id);
+  }
+}
+
+
+
+=== File: src/buildings/schemas/building.schema.ts ===
+=======================================
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+
+export type BuildingDocument = Document & {
+  unique_id: string;
+  dong_code: string;
+  dong_name: string;
+  jibun: string;
+  building_name: string;
+  land_area: number;
+  building_area: number;
+  purpose_category_name: string;
+  purpose_name: string;
+  detail_purpose_name: string;
+  structure_name: string;
+  above_ground_floors: number;
+  below_ground_floors: number;
+  built_year: number;
+  renovation_year: number;
+  address: string;
+  coordinates: [number, number];
+  __v: number;
+  score?: number;
+};
+
+@Schema()
+export class Building {
+  @Prop({ required: true })
+  unique_id: string;
+
+  @Prop({ required: true })
+  dong_code: string;
+
+  @Prop({ required: true })
+  dong_name: string;
+
+  @Prop({ required: true })
+  jibun: string;
+
+  @Prop({ required: true })
+  building_name: string;
+
+  @Prop({ required: true })
+  land_area: number;
+
+  @Prop({ required: true })
+  building_area: number;
+
+  @Prop({ required: true })
+  purpose_category_name: string;
+
+  @Prop({ required: true })
+  purpose_name: string;
+
+  @Prop({ required: true })
+  detail_purpose_name: string;
+
+  @Prop({ required: true })
+  structure_name: string;
+
+  @Prop({ required: true })
+  above_ground_floors: number;
+
+  @Prop({ required: true })
+  below_ground_floors: number;
+
+  @Prop({ required: true })
+  built_year: number;
+
+  @Prop({ required: true })
+  renovation_year: number;
+
+  @Prop({ required: true })
+  address: string;
+
+  @Prop({ required: true })
+  coordinates: [number, number];
+
+  @Prop()
+  score?: number;
+
+  constructor(
+    unique_id: string,
+    dong_code: string,
+    dong_name: string,
+    jibun: string,
+    building_name: string,
+    land_area: number,
+    building_area: number,
+    purpose_category_name: string,
+    purpose_name: string,
+    detail_purpose_name: string,
+    structure_name: string,
+    above_ground_floors: number,
+    below_ground_floors: number,
+    built_year: number,
+    renovation_year: number,
+    address: string,
+    coordinates: [number, number],
+    score?: number,
+  ) {
+    this.unique_id = unique_id;
+    this.dong_code = dong_code;
+    this.dong_name = dong_name;
+    this.jibun = jibun;
+    this.building_name = building_name;
+    this.land_area = land_area;
+    this.building_area = building_area;
+    this.purpose_category_name = purpose_category_name;
+    this.purpose_name = purpose_name;
+    this.detail_purpose_name = detail_purpose_name;
+    this.structure_name = structure_name;
+    this.above_ground_floors = above_ground_floors;
+    this.below_ground_floors = below_ground_floors;
+    this.built_year = built_year;
+    this.renovation_year = renovation_year;
+    this.address = address;
+    this.coordinates = coordinates;
+    this.score = score;
+  }
+}
+
+export const BuildingSchema = SchemaFactory.createForClass(Building);
+
+
+
+=== File: src/buildings/buildings.module.ts ===
+=======================================
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { BuildingsController } from './buildings.controller';
+import { BuildingsService } from './buildings.service';
+import { Building, BuildingSchema } from './schemas/building.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Building.name, schema: BuildingSchema },
+    ]),
+  ],
+  controllers: [BuildingsController],
+  providers: [BuildingsService],
+  exports: [BuildingsService],
+})
+export class BuildingsModule {}
+
+
+
+=== File: src/buildings/buildings.service.ts ===
+=======================================
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Building, BuildingDocument } from './schemas/building.schema';
+
+@Injectable()
+export class BuildingsService {
+  constructor(
+    @InjectModel(Building.name) private buildingModel: Model<BuildingDocument>,
+  ) {}
+
+  async findAll(): Promise<Building[]> {
+    return this.buildingModel.find().exec();
+  }
+
+  async findOne(id: string): Promise<Building> {
+    const building = await this.buildingModel.findOne({ unique_id: id }).exec();
+    if (!building) {
+      throw new NotFoundException(`Building with ID ${id} not found`);
+    }
+    return building;
+  }
+}
+
+
+
+=== File: src/main.ts ===
+=======================================
+import { NestFactory } from '@nestjs/core';
+import { AppModule } from './app.module';
+import { ValidationPipe, Logger, VersioningType } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import HttpExceptionFilter from './common/filters/http-exception.filter';
+
+async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+  const app = await NestFactory.create(AppModule);
+  const configService = app.get(ConfigService);
+  const port = configService.get<number>('port') || 3000;
+
+  // 글로벌 미들웨어 설정
+  app.use(helmet());
+  app.enableCors();
+
+  // API 경로 접두사 설정
+  app.setGlobalPrefix('api');
+
+  // API 버전 관리 설정
+  app.enableVersioning({
+    type: VersioningType.URI,
+    defaultVersion: '1',
+  });
+
+  // 유효성 검사 파이프 설정
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true, // 유효성 검증을 위한 데코레이터가 없는 속성은 제거
+      transform: true, // 타입 변환 활성화
+      forbidNonWhitelisted: true, // 화이트리스트에 없는 속성이 있으면 요청 거부
+      transformOptions: {
+        enableImplicitConversion: true, // 암시적 타입 변환 활성화
+      },
+    }),
+  );
+
+  // 전역 예외 필터 설정
+  app.useGlobalFilters(new HttpExceptionFilter());
+
+  // Swagger 설정
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('상가 추천 시스템 API')
+    .setDescription('상가 추천 시스템을 위한 API 문서')
+    .setVersion('1.0')
+    .addTag('recommend', '상가 추천 API')
+    .addTag('markets', '상가 정보 API')
+    .addTag('buildings', '건물 정보 API')
+    .addTag('search', '검색 API')
+    .addTag('health', '헬스 체크 API')
+    .addTag('admin', '관리자 API')
+    .addBearerAuth()
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('docs', app, document);
+
+  // Ollama 서비스는 모듈 초기화 시 qwen3:1.7b 모델을 자동으로 로드함
+  // LangChain을 통해 Ollama 연동
+  // 구현은 OllamaService의 onModuleInit() 메서드에서 처리
+
+  await app.listen(port);
+  logger.log(`애플리케이션이 포트 ${port}에서 실행 중입니다`);
+}
+
+bootstrap().catch((err: unknown) => {
+  const logger = new Logger('Bootstrap');
+  let errorMessage = 'Unknown error occurred';
+  if (err instanceof Error) {
+    errorMessage = err.message;
+    if (err.stack) {
+      logger.error(`Stack trace: ${err.stack}`);
+    }
+  }
+  logger.error(`애플리케이션 실행 중 오류가 발생했습니다: ${errorMessage}`);
+  process.exit(1);
+});
+
+
+
+=== File: src/recommend/dto/recommend-request.dto.ts ===
+=======================================
+import { ApiProperty } from '@nestjs/swagger';
+import { IsString } from 'class-validator';
+
+export class RecommendRequestDto {
+  @ApiProperty({ description: '검색할 텍스트', example: '마포구 카페' })
+  @IsString()
+  text: string = '';
+}
+
+
+
+=== File: src/recommend/dto/recommend-response.dto.ts ===
+=======================================
+import { ApiProperty } from '@nestjs/swagger';
+
+export class RecommendationItemDto {
+  @ApiProperty({ example: '공덕역 상가 B동' })
+  building!: string;
+
+  @ApiProperty({ example: '서울 마포구 공덕동 123-4' })
+  address!: string;
+
+  @ApiProperty({ example: 9.2 })
+  score!: number;
+
+  @ApiProperty({
+    example: ['지하철 도보 3분', '오피스 상권', '카페 밀집 지역'],
+    type: [String],
+  })
+  reasons!: string[];
+}
+
+export class RecommendResponseDto {
+  @ApiProperty({ example: 37.540291 })
+  input_latitude!: number;
+
+  @ApiProperty({ example: 126.986655 })
+  input_longitude!: number;
+
+  @ApiProperty({ example: 500 })
+  radius_min_meters!: number;
+
+  @ApiProperty({ example: 500 })
+  radius_max_meters!: number;
+
+  @ApiProperty({ example: '카페' })
+  category!: string;
+
+  @ApiProperty({ type: RecommendationItemDto })
+  recommendation!: RecommendationItemDto;
+
+  @ApiProperty({
+    example: '공덕동은 직장인 유동인구가 많고 역세권 입지로 적합합니다.',
+  })
+  llm_comment!: string;
+}
+
+
+
+=== File: src/recommend/recommend.controller.ts ===
+=======================================
+import { Controller, Post, Body } from '@nestjs/common';
+import { RecommendRequestDto } from './dto/recommend-request.dto';
+import { RecommendResponseDto } from './dto/recommend-response.dto';
+import { ApiResponse, ApiTags } from '@nestjs/swagger';
+import { RecommendService } from './recommend.service';
+
+@ApiTags('추천')
+@Controller('recommend')
+export class RecommendController {
+  constructor(private readonly recommendService: RecommendService) {}
+
+  @Post()
+  @ApiResponse({ status: 200, type: RecommendResponseDto })
+  async getRecommendations(
+    @Body() body: RecommendRequestDto,
+  ): Promise<RecommendResponseDto> {
+    return this.recommendService.getRecommendations(body.text);
+  }
+}
+
+
+
+=== File: src/recommend/recommend.module.ts ===
+=======================================
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Market, MarketSchema } from '../markets/schemas/market.schema';
+import { Building, BuildingSchema } from '../buildings/schemas/building.schema';
+import { RecommendService } from './recommend.service';
+import { RecommendController } from './recommend.controller';
+import { RedisModule } from '../redis/redis.module';
+import { ElasticsearchModule } from '../elasticsearch/elasticsearch.module';
+import { OllamaModule } from '../ollama/ollama.module';
+import { NaverModule } from '@/naver/naver.module';
+import { UtilsModule } from '@/common/utils/utils.module';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([
+      { name: Market.name, schema: MarketSchema },
+      { name: Building.name, schema: BuildingSchema },
+    ]),
+    RedisModule,
+    ElasticsearchModule.forRoot(),
+    OllamaModule,
+    NaverModule,
+    UtilsModule,
+  ],
+  controllers: [RecommendController],
+  providers: [RecommendService],
+  exports: [RecommendService],
+})
+export class RecommendModule {}
+
+
+
+=== File: src/recommend/recommend.service.ts ===
+=======================================
+import { HttpException, HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { ElasticsearchService } from '@nestjs/elasticsearch';
+import { RedisService } from '@/redis/redis.service';
+import { RecommendResponseDto } from './dto/recommend-response.dto';
+import { NaverService } from '../naver/naver.service';
+import { CategoryUtils } from '../common/utils/category.utils';
+import { OllamaService } from '@/ollama/ollama.service';
+import { categoryRadiusData } from '@/common/data/category.data';
+
+interface RegionCategory {
+  region: string;
+  category: string;
+  radiusKm?: number; // null도 허용
+}
+
+@Injectable()
+export class RecommendService {
+  private readonly logger = new Logger(RecommendService.name);
+
+  constructor(
+    private readonly esService: ElasticsearchService,
+    private readonly redisService: RedisService,
+    private readonly naverService: NaverService,
+    private readonly categoryUtils: CategoryUtils,
+    private readonly ollamaService: OllamaService,
+  ) {}
+
+  private generateCacheKey(
+    latitude: number,
+    longitude: number,
+    category: string,
+    radiusMin: number,
+    radiusMax: number,
+  ): string {
+    // 소수점 6자리까지 정확도로 키 생성 (약 10cm 정확도)
+    const lat = latitude.toFixed(6);
+    const lng = longitude.toFixed(6);
+    return `recommend:${lat}:${lng}:${category}:${radiusMin}:${radiusMax}`;
+  }
+
+  async extractRegionAndCategory(text: string): Promise<RegionCategory> {
+    const prompt = `
+  아래 문장에서 다음 정보를 추출해주세요:
+  1. 도로명 주소 (예: 서울시 마포구 마포대로 10길 22)
+  2. 업종 카테고리 (예: 소고기 구이/찜, 카페 등)
+  3. 반경 (숫자 + km/m/킬로미터/미터/키로 등이 포함된 경우)
+  
+  문장: "${text}"
+  
+  반드시 다음 JSON 형식으로 응답해주세요:
+  {
+    "address": "추출된 주소",
+    "category": "추출된 카테고리",
+    "radius": 숫자 (반경이 없을 경우 null, km 단위로 변환)
+  }
+  
+  예시1:
+  입력: "서울시 마포구 마포대로 10길 22에 소고기 구이/찜 음식점 차릴건데 3km 반경으로 건물을 추천해줘"
+  출력: {"address": "서울시 마포구 마포대로 10길 22", "category": "소고기 구이/찜", "radius": 3}
+  
+  예시2:
+  입력: "강남역 근처에 카페 열고 싶어"
+  출력: {"address": "강남역", "category": "카페", "radius": null}
+  `;
+
+    let llmResult: string;
+    try {
+      llmResult = await this.ollamaService.prompt(prompt);
+      const result = JSON.parse(llmResult) as {
+        address: string;
+        category: string;
+        radius: number | null;
+      };
+
+      // 주소 정규화
+      const normalizedAddress = result.address
+        .replace(/\s+/g, ' ')
+        .replace(/\s*([-()])\s*/g, '$1')
+        .trim();
+
+      return {
+        region: normalizedAddress,
+        category: result.category,
+        radiusKm: result.radius ?? undefined, // null 또는 undefined면 undefined 반환
+      };
+    } catch (err) {
+      this.logger.error('주소 및 카테고리 추출 실패', err);
+      return { region: '', category: '', radiusKm: undefined };
+    }
+  }
+
+  private getRadiusForCategory(category: string): { min: number; max: number } {
+    // Remove any leading/trailing whitespace and convert to lowercase for case-insensitive matching
+    const normalizedCategory = category.trim().toLowerCase();
+
+    // Try to find a matching category (case-insensitive)
+    const categoryInfo = categoryRadiusData.find(
+      (item) => item.category_small.toLowerCase() === normalizedCategory,
+    );
+
+    if (!categoryInfo) {
+      this.logger.warn(
+        `No radius info found for category: ${category}. Using default values.`,
+      );
+      return { min: 1, max: 5 }; // Default values in km
+    }
+
+    this.logger.debug(
+      `Found radius for category ${category}: ${categoryInfo.radius_min_km}km - ${categoryInfo.radius_max_km}km (${categoryInfo.description})`,
+    );
+
+    return {
+      min: categoryInfo.radius_min_km ?? 1,
+      max: categoryInfo.radius_max_km ?? 5,
+    };
+  }
+
+  private async findNearbyBuildings(
+    latitude: number,
+    longitude: number,
+    radiusMeters: number,
+  ): Promise<any[]> {
+    try {
+      const query = {
+        index: 'buildings_seoul', // 인덱스명 확인 필요
+        body: {
+          query: {
+            geo_distance: {
+              distance: `${radiusMeters}m`,
+              location: {
+                lat: latitude,
+                lon: longitude,
+              },
+            },
+          },
+          sort: [
+            {
+              _geo_distance: {
+                location: {
+                  lat: latitude,
+                  lon: longitude,
+                },
+                order: 'asc',
+                unit: 'm',
+                mode: 'min',
+              },
+            },
+          ],
+          size: 50, // 가져올 최대 결과 수
+        },
+      };
+
+      const { body } = await this.esService.search(query);
+      return body.hits.hits.map((hit: any) => hit._source);
+    } catch (error) {
+      this.logger.error('근처 건물 검색 중 오류 발생', error);
+      throw new HttpException(
+        '건물 정보를 가져오는 중 오류가 발생했습니다.',
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  async getRecommendations(text: string): Promise<RecommendResponseDto> {
+    this.logger.log(`Getting recommendations for: ${text}`);
+
+    // 1. 자연어로 입력된 `text`에서 지역명, 업종명을 파싱
+    const { region, category, radiusKm } =
+      await this.extractRegionAndCategory(text);
+    this.logger.debug(`Parsed - Region: ${region}, Category: ${category}`);
+
+    // 2. Naver Geocoding API 호출하여 해당 지역의 위도, 경도 획득
+    const coordinates = await this.naverService.geocodeAddress(region);
+
+    if (!coordinates) {
+      throw new HttpException(
+        '주소를 찾을 수 없습니다. 더 자세한 주소를 입력해주세요.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const { latitude: inputLatitude, longitude: inputLongitude } = coordinates;
+    this.logger.debug(
+      `Geocoded coordinates - Lat: ${inputLatitude}, Lng: ${inputLongitude} for address: ${region}`,
+    );
+
+    // 3. 추천 반경(m) 설정 (기본값: 500m)
+    const radiusMeters = this.getRadiusForCategory(category);
+    const radiusMinMeters = radiusMeters.min * 1000;
+    const radiusMaxMeters = radiusMeters.max * 1000;
+
+    // TODO: 4. Redis 캐시 확인 (해당 좌표+업종+반경 조합이 캐싱되어 있으면 바로 반환)
+
+    const cacheKey = this.generateCacheKey(
+      inputLatitude,
+      inputLongitude,
+      category,
+      radiusMinMeters,
+      radiusMaxMeters,
+    );
+
+    const cachedData: string | null = await this.redisService.get(cacheKey);
+    if (cachedData) {
+      this.logger.debug(`Cache hit for ${cacheKey}`);
+      return JSON.parse(cachedData);
+    }
+
+    // TODO: 6. Elasticsearch에서 buildings_seoul 인덱스 검색
+    //    - 해당 좌표 반경 내의 건물 정보 추출
+
+    // TODO: 5. Elasticsearch에서 shops_seoul 인덱스 검색
+    //    - category_middle = category인 상가들을 radiusMeters 내에서 검색
+    // TODO: 6. Elasticsearch에서 buildings_seoul 인덱스 검색
+    //    - 해당 좌표 반경 내의 건물 정보 추출
+    // TODO: 7. LangChain의 PromptTemplate을 이용해 프롬프트 구성
+    //    - 좌표, 반경, 업종, 상가/건물 데이터를 LLM에 전달
+    // TODO: 8. Ollama(gemma3:1b-it-qat) 모델 호출 → 추천 JSON 응답 획득
+    // TODO: 9. 결과 파싱하여 DTO 형태로 매핑 (RecommendationItemDto)
+    // TODO: 10. Redis에 결과 캐싱 (TTL 설정: 1시간 등)
+
+    // TODO: Remove this mock implementation after implementing the actual logic
+    await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate async operation
+
+    // 임시 응답 (실제 구현시에는 위의 TODO 항목들을 구현한 후 반환)
+    return {
+      input_latitude: inputLatitude,
+      input_longitude: inputLongitude,
+      radius_min_meters: radiusMeters.min,
+      radius_max_meters: radiusMeters.max,
+      category,
+      recommendation: {
+        building: `${region} 상가 B동`,
+        address: `서울 ${region} 123-4`,
+        score: 9.2,
+        reasons: [
+          '지하철 도보 3분 거리',
+          '오피스 밀집 지역',
+          '반경 내 유사 업종 분포가 적당함',
+        ],
+      },
+      llm_comment: `${region} 반경 ${radiusMeters.min}m ~ ${radiusMeters.max}m는 유동인구가 많고, ${category} 밀집도와 접근성이 뛰어나 신규 ${category} 입지로 적합합니다.`,
+    };
+  }
+}
+
+
+
+=== File: src/redis/redis.module.ts ===
+=======================================
+import { Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import Redis from 'ioredis';
+import { RedisService } from './redis.service'; // 추가
+
+export const REDIS_CLIENT = 'REDIS_CLIENT';
+
+@Global()
+@Module({
+  providers: [
+    {
+      provide: REDIS_CLIENT,
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => {
+        return new Redis({
+          host: configService.get<string>('redis.host'),
+          port: configService.get<number>('redis.port'),
+        });
+      },
+    },
+    RedisService,
+  ],
+  exports: [REDIS_CLIENT, RedisService],
+})
+export class RedisModule {}
+
+
+
+=== File: src/redis/redis.service.ts ===
+=======================================
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { createClient, RedisClientType } from 'redis';
+
+@Injectable()
+export class RedisService implements OnModuleInit {
+  private client!: RedisClientType;
+
+  async onModuleInit() {
+    this.client = createClient({
+      url: 'redis://192.168.0.111:6379',
+      // 재연결 설정 추가
+      socket: {
+        reconnectStrategy: (retries) => {
+          if (retries > 5) {
+            console.error('Redis 연결 재시도 횟수 초과');
+            return new Error('Redis 연결 실패');
+          }
+          return Math.min(retries * 100, 5000); // 최대 5초 대기
+        },
+      },
+    });
+
+    // 에러 이벤트 리스너 추가
+    this.client.on('error', (err) => {
+      console.error('Redis Client Error', err);
+    });
+
+    await this.client.connect();
+  }
+
+  // get 메서드 추가
+  async get(key: string): Promise<string | null> {
+    return this.client.get(key);
+  }
+
+  // set 메서드 추가
+  async set(
+    key: string,
+    value: string,
+    mode: 'EX' | 'PX' | 'KEEPTTL' = 'EX',
+    duration?: number,
+  ): Promise<string | null> {
+    if (mode === 'EX' || mode === 'PX') {
+      if (!duration) {
+        throw new Error('Duration is required for EX/PX mode');
+      }
+      return this.client.set(key, value, {
+        [mode === 'EX' ? 'EX' : 'PX']: duration,
+      });
+    }
+    return this.client.set(key, value, { [mode]: true });
+  }
+
+  // 기존 getClient 메서드
+  getClient(): RedisClientType {
+    return this.client;
+  }
+}
+
+
+
+=== File: src/app.service.ts ===
+=======================================
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class AppService {
+  getHello(): string {
+    return 'Hello World!';
+  }
+}
+
+
+
+=== File: src/naver/dto/naver-geocoding.dto.ts ===
+=======================================
+export class NaverGeocodingResponseDto {
+  status: string = '';
+  meta = {
+    totalCount: 0,
+    page: 0,
+    count: 0,
+  };
+  addresses: Array<{
+    roadAddress: string;
+    jibunAddress: string;
+    englishAddress: string;
+    addressElements: Array<{
+      types: string[];
+      longName: string;
+      shortName: string;
+      code: string;
+    }>;
+    x: string; // 경도 (longitude)
+    y: string; // 위도 (latitude)
+    distance: number;
+  }> = [];
+  errorMessage: string = '';
+}
+
+export class CoordinatesDto {
+  latitude: number = 0;
+  longitude: number = 0;
+  address: string = '';
+}
+
+
+
+=== File: src/naver/naver.module.ts ===
+=======================================
+import { Module } from '@nestjs/common';
+import { HttpModule } from '@nestjs/axios';
+import { ConfigModule } from '@nestjs/config';
+import { NaverService } from './naver.service';
+
+@Module({
+  imports: [HttpModule, ConfigModule],
+  providers: [NaverService],
+  exports: [NaverService],
+})
+export class NaverModule {}
+
+
+
+=== File: src/naver/naver.service.ts ===
+=======================================
+import { HttpService } from '@nestjs/axios';
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { CoordinatesDto } from './dto/naver-geocoding.dto';
+import axios from 'axios';
+
+@Injectable()
+export class NaverService {
+  private readonly logger = new Logger(NaverService.name);
+  private readonly apiUrl =
+    'https://naveropenapi.apigw.ntruss.com/map-geocode/v2/geocode';
+  private readonly clientId: string;
+  private readonly clientSecret: string;
+
+  constructor(
+    private readonly httpService: HttpService,
+    private readonly configService: ConfigService,
+  ) {
+    this.clientId = this.configService.get<string>('NAVER_CLIENT_ID') || '';
+    this.clientSecret =
+      this.configService.get<string>('NAVER_CLIENT_SECRET') || '';
+  }
+
+  /**
+   * 주소를 좌표로 변환합니다.
+   * @param address 변환할 주소
+   * @returns 좌표 정보 (위도, 경도, 주소)
+   */
+  async geocodeAddress(address: string): Promise<CoordinatesDto | null> {
+    if (!this.clientId || !this.clientSecret) {
+      this.logger.error('Naver API credentials are not configured');
+      return null;
+    }
+
+    try {
+      const response = await axios.get(
+        'https://maps.apigw.ntruss.com/map-geocode/v2/geocode',
+        {
+          params: { query: address },
+          headers: {
+            'X-NCP-APIGW-API-KEY-ID': this.clientId,
+            'X-NCP-APIGW-API-KEY': this.clientSecret,
+            Accept: 'application/json',
+          },
+        },
+      );
+      const { data } = response;
+
+      if (
+        data.status !== 'OK' ||
+        !data.addresses ||
+        data.addresses.length === 0
+      ) {
+        this.logger.warn(`No results found for address: ${address}`);
+        return null;
+      }
+
+      const firstResult = data.addresses[0];
+
+      return {
+        latitude: parseFloat(firstResult.y),
+        longitude: parseFloat(firstResult.x),
+        address: firstResult.roadAddress || firstResult.jibunAddress,
+      };
+    } catch (error) {
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(
+        `Geocoding error for address ${address}: ${errorMessage}`,
+        error instanceof Error ? error.stack : '',
+      );
+      return null;
+    }
+  }
+}
+
+
+
+=== File: src/app.module.ts ===
+=======================================
+import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { MongooseModule } from '@nestjs/mongoose';
+import configuration from '../config/configuration';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { BuildingsModule } from './buildings/buildings.module';
+import { ElasticsearchModule } from './elasticsearch/elasticsearch.module';
+import { MarketsModule } from './markets/markets.module';
+import { NaverModule } from './naver/naver.module';
+import { RecommendModule } from './recommend/recommend.module';
+
+@Module({
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      load: [configuration],
+      envFilePath: './config/.env',
+    }),
+    MongooseModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: (configService: ConfigService) => ({
+        uri: configService.get<string>('mongoUri'),
+      }),
+    }),
+    BuildingsModule,
+    MarketsModule,
+    NaverModule,
+    RecommendModule,
+    // RedisModule,  // 임시로 주석 처리
+    ElasticsearchModule.forRoot(),
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+
+
+
+=== File: src/common/filters/http-exception.filter.ts ===
+=======================================
+import {
+  ArgumentsHost,
+  Catch,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  Logger,
+} from '@nestjs/common';
+import { Request, Response } from 'express';
+
+@Catch(HttpException)
+export default class HttpExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger(HttpExceptionFilter.name);
+
+  catch(exception: HttpException, host: ArgumentsHost) {
+    const ctx = host.switchToHttp();
+    const response = ctx.getResponse<Response>();
+    const request = ctx.getRequest<Request>();
+    const status =
+      exception instanceof HttpException
+        ? exception.getStatus()
+        : HttpStatus.INTERNAL_SERVER_ERROR;
+
+    // 클라이언트 IP 주소 가져오기 (프록시를 고려하여 x-forwarded-for 헤더 확인)
+    const xForwardedFor = request.headers['x-forwarded-for'];
+    const clientIp = Array.isArray(xForwardedFor)
+      ? xForwardedFor[0]
+      : xForwardedFor || request.connection.remoteAddress || 'unknown';
+
+    const errorResponse = {
+      statusCode: status,
+      timestamp: new Date().toISOString(),
+      path: request.url,
+      method: request.method,
+      ip: clientIp,
+      message: exception.message || '서버 오류가 발생했습니다',
+    };
+
+    this.logger.error(
+      `${request.method} ${request.url} ${status} - IP: ${clientIp} - ${exception.message}`,
+      exception.stack,
+    );
+
+    response.status(status).json(errorResponse);
+  }
+}
+
+
+
+=== File: src/common/utils/utils.module.ts ===
+=======================================
+import { Module } from '@nestjs/common';
+import { CategoryUtils } from './category.utils';
+
+@Module({
+  providers: [CategoryUtils],
+  exports: [CategoryUtils],
+})
+export class UtilsModule {}
+
+
+
+=== File: src/common/utils/category.utils.ts ===
+=======================================
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class CategoryUtils {
+  private readonly categoryData = [
+    {
+      category_large: '보건의료',
+      categories: [
+        {
+          category_middle: '의원',
+          category_smalls: [
+            '기타 의원',
+            '성형외과 의원',
+            '외과 의원',
+            '안과 의원',
+            '내과/소아과 의원',
+            '이비인후과 의원',
+            '산부인과 의원',
+            '방사선 진단/병리 검사 의원',
+            '신경/정신과 의원',
+            '치과의원',
+            '한의원',
+            '피부/비뇨기과 의원',
+          ],
+        },
+        {
+          category_middle: '병원',
+          category_smalls: [
+            '치과병원',
+            '요양병원',
+            '한방병원',
+            '일반병원',
+            '종합병원',
+          ],
+        },
+        {
+          category_middle: '기타 보건',
+          category_smalls: ['유사 의료업'],
+        },
+        // ... (rest of the category data) ...
+      ],
+    },
+    {
+      category_large: '부동산',
+      categories: [
+        {
+          category_middle: '부동산 서비스',
+          category_smalls: ['부동산 중개/대리업'],
+        },
+      ],
+    },
+    {
+      category_large: '숙박',
+      categories: [
+        {
+          category_middle: '일반 숙박',
+          category_smalls: ['캠핑/글램핑', '여관/모텔', '호텔/리조트', '펜션'],
+        },
+        {
+          category_middle: '기타 숙박',
+          category_smalls: ['그 외 기타 숙박업', '기숙사/고시원'],
+        },
+      ],
+    },
+    {
+      category_large: '수리·개인',
+      categories: [
+        {
+          category_middle: '이용·미용',
+          category_smalls: ['미용실', '피부 관리실', '네일숍'],
+        },
+        {
+          category_middle: '컴퓨터 수리',
+          category_smalls: ['컴퓨터/노트북/프린터 수리업'],
+        },
+        {
+          category_middle: '세탁',
+          category_smalls: ['세탁소', '셀프 빨래방'],
+        },
+        {
+          category_middle: '통신장비 수리',
+          category_smalls: ['핸드폰/통신장비 수리업'],
+        },
+        {
+          category_middle: '욕탕·신체관리',
+          category_smalls: ['마사지/안마', '체형/비만 관리', '목욕탕/사우나'],
+        },
+        {
+          category_middle: '장례식장 ',
+          category_smalls: ['화장터/묘지/납골당', '장례식장'],
+        },
+        {
+          category_middle: '자동차 수리·세차',
+          category_smalls: ['자동차 세차장', '자동차 정비소'],
+        },
+        {
+          category_middle: '기타 가정용품 수리',
+          category_smalls: [
+            '시계/귀금속/악기 수리업',
+            '그 외 기타 개인/가정용품 수리업',
+            '의류/이불 수선업',
+            '가죽/가방/신발 수선업',
+          ],
+        },
+        {
+          category_middle: '가전제품 수리',
+          category_smalls: ['가전제품 수리업'],
+        },
+        {
+          category_middle: '모터사이클 수리',
+          category_smalls: ['모터사이클 수리업'],
+        },
+        {
+          category_middle: '기타 개인',
+          category_smalls: ['결혼 상담 서비스업', '예식장업'],
+        },
+      ],
+    },
+    {
+      category_large: '소매',
+      categories: [
+        {
+          category_middle: '기타 상품 소매',
+          category_smalls: ['그 외 기타 상품 전문 소매업'],
+        },
+        {
+          category_middle: '연료 소매',
+          category_smalls: ['가정용 연료 소매업', '가스 충전소', '주유소'],
+        },
+        {
+          category_middle: '가전·통신 소매',
+          category_smalls: [
+            '컴퓨터/소프트웨어 소매업',
+            '핸드폰 소매업',
+            '가전제품 소매업',
+          ],
+        },
+        {
+          category_middle: '장식품 소매',
+          category_smalls: ['예술품 소매업', '기념품점'],
+        },
+        {
+          category_middle: '시계·귀금속 소매',
+          category_smalls: ['시계/귀금속 소매업'],
+        },
+        {
+          category_middle: '자동차 부품 소매',
+          category_smalls: ['자동차 부품 소매업', '타이어 소매업'],
+        },
+        {
+          category_middle: '의약·화장품 소매',
+          category_smalls: ['약국', '의료기기 소매업', '화장품 소매업'],
+        },
+        {
+          category_middle: '애완동물·용품 소매',
+          category_smalls: ['애완동물/애완용품 소매업'],
+        },
+        {
+          category_middle: '모터사이클 소매',
+          category_smalls: ['모터사이클 및 부품 소매업'],
+        },
+        {
+          category_middle: '섬유·의복·신발 소매',
+          category_smalls: [
+            '남성 의류 소매업',
+            '여성 의류 소매업',
+            '침구류/커튼 소매업',
+            '기타 의류 소매업',
+            '액세서리/잡화 소매업',
+            '신발 소매업',
+            '가발 소매업',
+            '한복 소매업',
+            '유아용 의류 소매업',
+            '실/섬유제품 소매업',
+            '가방 소매업',
+          ],
+        },
+        {
+          category_middle: '중고 상품 소매',
+          category_smalls: ['중고 상품 소매업'],
+        },
+        {
+          category_middle: '오락용품 소매',
+          category_smalls: [
+            '자전거 소매업',
+            '문구/회화용품 소매업',
+            '서점',
+            '장난감 소매업',
+            '운동용품 소매업',
+            '음반/비디오물 소매업',
+          ],
+        },
+        {
+          category_middle: '식료품 소매',
+          category_smalls: [
+            '건어물/젓갈 소매업',
+            '건강보조식품 소매업',
+            '곡물/곡분 소매업',
+            '정육점',
+            '채소/과일 소매업',
+            '아이스크림 할인점',
+            '가축 사료 소매업',
+            '반찬/식료품 소매업',
+            '수산물 소매업',
+          ],
+        },
+        {
+          category_middle: '음료 소매',
+          category_smalls: [
+            '생수/음료 소매업',
+            '주류 소매업',
+            '우유 소매업',
+            '얼음 소매업',
+          ],
+        },
+        {
+          category_middle: '담배 소매',
+          category_smalls: ['담배/전자담배 소매업'],
+        },
+        {
+          category_middle: '안경·정밀기기 소매',
+          category_smalls: [
+            '사무기기 소매업',
+            '안경렌즈 소매업',
+            '사진기/기타 광학기기 소매업',
+          ],
+        },
+        {
+          category_middle: '종합 소매',
+          category_smalls: ['그 외 기타 종합 소매업', '편의점', '슈퍼마켓'],
+        },
+        {
+          category_middle: '가구 소매',
+          category_smalls: ['가구 소매업'],
+        },
+        {
+          category_middle: '식물 소매',
+          category_smalls: ['꽃집'],
+        },
+        {
+          category_middle: '기타 생활용품 소매',
+          category_smalls: [
+            '악기 소매업',
+            '주방/가정용품 소매업',
+            '전기용품/조명장치 소매업',
+          ],
+        },
+        {
+          category_middle: '철물·건설자재 소매',
+          category_smalls: [
+            '기타 건설/건축자재 소매업',
+            '건설/건축자재 소매업',
+            '철물/공구 소매업',
+            '벽지/장판/마루 소매업',
+          ],
+        },
+      ],
+    },
+    {
+      category_large: '음식',
+      categories: [
+        {
+          category_middle: '주점',
+          category_smalls: [
+            '요리 주점',
+            '생맥주 전문',
+            '무도 유흥 주점',
+            '일반 유흥 주점',
+          ],
+        },
+        {
+          category_middle: '기타 외국',
+          category_smalls: ['분류 안된 외국식 음식점'],
+        },
+        {
+          category_middle: '서양식',
+          category_smalls: [
+            '파스타/스테이크',
+            '경양식',
+            '패밀리레스토랑',
+            '기타 서양식 음식점',
+          ],
+        },
+        {
+          category_middle: '일식',
+          category_smalls: [
+            '기타 일식 음식점',
+            '일식 면 요리',
+            '일식 카레/돈가스/덮밥',
+            '일식 회/초밥',
+          ],
+        },
+        {
+          category_middle: '기타 간이',
+          category_smalls: [
+            '치킨',
+            '토스트/샌드위치/샐러드',
+            '그 외 기타 간이 음식점',
+            '아이스크림/빙수',
+            '버거',
+            '피자',
+            '떡/한과',
+            '김밥/만두/분식',
+            '빵/도넛',
+          ],
+        },
+        {
+          category_middle: '중식',
+          category_smalls: ['중국집', '마라탕/훠궈'],
+        },
+        {
+          category_middle: '동남아시아',
+          category_smalls: ['베트남식 전문', '기타 동남아식 전문'],
+        },
+        {
+          category_middle: '한식',
+          category_smalls: [
+            '닭/오리고기 구이/찜',
+            '소고기 구이/찜',
+            '기타 한식 음식점',
+            '족발/보쌈',
+            '횟집',
+            '냉면/밀면',
+            '국수/칼국수',
+            '복 요리 전문',
+            '곱창 전골/구이',
+            '백반/한정식',
+            '국/탕/찌개류',
+            '해산물 구이/찜',
+            '전/부침개',
+            '돼지고기 구이/찜',
+          ],
+        },
+        {
+          category_middle: '구내식당·뷔페',
+          category_smalls: ['구내식당', '뷔페'],
+        },
+        {
+          category_middle: '비알코올 ',
+          category_smalls: ['카페'],
+        },
+      ],
+    },
+    {
+      category_large: '예술·스포츠',
+      categories: [
+        {
+          category_middle: '도서관·사적지',
+          category_smalls: ['독서실/스터디 카페'],
+        },
+        {
+          category_middle: '유원지·오락',
+          category_smalls: [
+            '수상/해양 레저업',
+            '노래방',
+            '기타 오락장',
+            '바둑/장기/체스 경기 운영업',
+            '낚시터 운영업',
+            '기타 오락관련 서비스업',
+            'PC방',
+            '전자 게임장',
+            '복권 발행/판매업',
+            '비디오방',
+          ],
+        },
+        {
+          category_middle: '스포츠 서비스',
+          category_smalls: [
+            '당구장',
+            '스쿼시/라켓볼장',
+            '테니스장',
+            '탁구장',
+            '헬스장',
+            '기타 스포츠시설 운영업',
+            '수영장',
+            '종합 스포츠시설',
+            '골프 연습장',
+            '볼링장',
+          ],
+        },
+      ],
+    },
+    {
+      category_large: '교육',
+      categories: [
+        {
+          category_middle: '기타 교육',
+          category_smalls: [
+            '요가/필라테스 학원',
+            '컴퓨터 학원',
+            '음악학원',
+            '운전학원',
+            '기타 예술/스포츠 교육기관',
+            '사회교육시설',
+            '청소년 수련시설',
+            '외국어학원',
+            '미술학원',
+            '직원 훈련기관',
+            '태권도/무술학원',
+            '기타 기술/직업 훈련학원',
+            '전문자격/고시학원',
+            '레크리에이션 교육기관',
+            '그 외 기타 교육기관',
+          ],
+        },
+        {
+          category_middle: '교육 지원',
+          category_smalls: ['교육컨설팅업', '기타 교육지원 서비스업'],
+        },
+        {
+          category_middle: '일반 교육',
+          category_smalls: ['입시·교과학원'],
+        },
+      ],
+    },
+    {
+      category_large: '과학·기술',
+      categories: [
+        {
+          category_middle: '시장 조사',
+          category_smalls: ['시장 조사 및 여론 조사업'],
+        },
+        {
+          category_middle: '인쇄·제품제작',
+          category_smalls: ['명함/간판/광고물 제작'],
+        },
+        {
+          category_middle: '기술 서비스',
+          category_smalls: [
+            '기타 엔지니어링 서비스업',
+            '환경 관련 엔지니어링 서비스업',
+            '건물 및 토목 엔지니어링 서비스업',
+            '도시 계획 및 조경 설계 서비스업',
+            '건축 설계 및 관련 서비스업',
+          ],
+        },
+        {
+          category_middle: '회계·세무',
+          category_smalls: ['세무사', '기타 회계 관련 서비스업', '공인회계사'],
+        },
+        {
+          category_middle: '수의',
+          category_smalls: ['동물병원'],
+        },
+        {
+          category_middle: '법무관련 ',
+          category_smalls: [
+            '변호사',
+            '기타 법무관련 서비스업',
+            '행정사',
+            '공인노무사',
+            '변리사',
+            '법무사',
+          ],
+        },
+        {
+          category_middle: '전문 디자인',
+          category_smalls: [
+            '패션/섬유/기타 전문 디자인업',
+            '인테리어 디자인업',
+            '제품 디자인업',
+            '시각 디자인업',
+          ],
+        },
+        {
+          category_middle: '광고',
+          category_smalls: [
+            '옥외/전시 광고 대행업',
+            '광고 대행업',
+            '광고물 설계/제작업',
+            '기타 광고 관련 서비스업',
+            '광고 매체 판매업',
+          ],
+        },
+        {
+          category_middle: '사진 촬영',
+          category_smalls: ['사진촬영업'],
+        },
+        {
+          category_middle: '기타 전문 과학',
+          category_smalls: ['사업/무형 재산권 중개업', '번역/통역 서비스업'],
+        },
+        {
+          category_middle: '본사·경영 컨설팅',
+          category_smalls: ['경영 컨설팅업'],
+        },
+      ],
+    },
+    {
+      category_large: '시설관리·임대',
+      categories: [
+        {
+          category_middle: '시설관리',
+          category_smalls: ['사업시설 유지·관리 서비스업'],
+        },
+        {
+          category_middle: '산업용품 대여',
+          category_smalls: [
+            '컴퓨터/사무기기 대여업',
+            '건설기계/장비 대여업',
+            '기타 산업용 기계/장비 대여업',
+          ],
+        },
+        {
+          category_middle: '고용 알선',
+          category_smalls: [
+            '고용 알선업',
+            '임시/일용 인력 공급업',
+            '상용 인력 공급 및 인사관리 서비스업',
+          ],
+        },
+        {
+          category_middle: '기타 사업 서비스',
+          category_smalls: ['포장/충전업', '전시/컨벤션/행사 대행 서비스업'],
+        },
+        {
+          category_middle: '청소·방제',
+          category_smalls: [
+            '산업설비; 운송장비 및 공공장소 청소업',
+            '소독; 구충 및 방제 서비스업',
+            '건축물 일반 청소업',
+          ],
+        },
+        {
+          category_middle: '여행사·보조',
+          category_smalls: ['여행사', '기타 여행 보조/예약 서비스업'],
+        },
+        {
+          category_middle: '가정용품 대여',
+          category_smalls: [
+            '음반/비디오물 대여업',
+            '만화방',
+            '의류 대여업',
+            '스포츠/레크리에이션 용품 대여업',
+            '기타 개인/가정용품 대여업',
+          ],
+        },
+        {
+          category_middle: '사무 지원',
+          category_smalls: ['기타 사무 지원 서비스업', '복사업'],
+        },
+        {
+          category_middle: '조경·유지',
+          category_smalls: ['조경 유지·관리 서비스업'],
+        },
+        {
+          category_middle: '운송장비 대여',
+          category_smalls: ['기타 운송장비 대여업', '자동차 대여업'],
+        },
+      ],
+    },
+  ];
+
+  /**
+   * 모든 소분류 카테고리 목록을 반환합니다.
+   */
+  getAllSmallCategories(): string[] {
+    const smallCategories: string[] = [];
+
+    this.categoryData.forEach((largeCategory) => {
+      largeCategory.categories.forEach((middleCategory) => {
+        smallCategories.push(...middleCategory.category_smalls);
+      });
+    });
+
+    // 중복 제거 (필요시)
+    return [...new Set(smallCategories)];
+  }
+
+  /**
+   * 카테고리 매핑을 반환합니다.
+   * 예: { '카페': '비알코올', '스타벅스': '비알코올', ... }
+   */
+  getCategoryMapping(): Record<string, string> {
+    const mapping: Record<string, string> = {};
+
+    this.categoryData.forEach((largeCategory) => {
+      largeCategory.categories.forEach((middleCategory) => {
+        middleCategory.category_smalls.forEach((smallCategory) => {
+          mapping[smallCategory] = middleCategory.category_middle;
+        });
+      });
+    });
+
+    return mapping;
+  }
+
+  /**
+   * 입력된 텍스트에서 가장 유사한 소분류 카테고리를 찾습니다.
+   */
+  findMostSimilarCategory(input: string): string | null {
+    if (!input) return null;
+
+    const smallCategories = this.getAllSmallCategories();
+    const normalizedInput = this.normalizeText(input);
+
+    // 정확히 일치하는 카테고리가 있는지 확인
+    const exactMatch = smallCategories.find(
+      (category) => this.normalizeText(category) === normalizedInput,
+    );
+    if (exactMatch) return exactMatch;
+
+    // 부분 일치하는 카테고리 찾기
+    const partialMatches = smallCategories.filter((category) =>
+      this.normalizeText(category).includes(normalizedInput),
+    );
+
+    // 가장 짧은 카테고리를 반환 (더 구체적인 카테고리일 가능성이 높음)
+    if (partialMatches.length > 0) {
+      return partialMatches.sort((a, b) => a.length - b.length)[0];
+    }
+
+    return null;
+  }
+
+  /**
+   * 텍스트를 정규화합니다 (비교를 위해).
+   */
+  private normalizeText(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/[\s\-/]/g, '')
+      .trim();
+  }
+}
+
+
+
+=== File: src/common/data/category.data.ts ===
+=======================================
+// 카테고리별 반경 정보 타입 정의
+export interface CategoryRadiusInfo {
+  category_large: string;
+  category_middle: string;
+  category_small: string;
+  radius_min_km: number | null;
+  radius_max_km: number | null;
+  description?: string;
+}
+
+// 카테고리별 반경 데이터 (하나도 빠짐없이 모두 포함)
+export const categoryRadiusData: CategoryRadiusInfo[] = [
+  {
+    category_large: '﻿대분류',
+    category_middle: '중분류',
+    category_small: '소분류',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '비고',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '기타 의원',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 병원 느낌',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '성형외과 의원',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '전문 진료라 좀 멀리도 갈 수 있음',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '외과 의원',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '일반 외과는 가깝게',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '안과 의원',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 안과/전문 안과 따라 다름',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '내과/소아과 의원',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '감기 걸리면 집 앞이지 ㅋㅋ',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '이비인후과 의원',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '귀/코/목 아플 때 가깝게',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '산부인과 의원',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '좀 더 고려해서 선택하기도 함',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '방사선 진단/병리 검사 의원',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '보통 의뢰받아 가거나 전문 병원에 있음',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '신경/정신과 의원',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '편하게 갈 수 있는 거리',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '치과의원',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 치과/전문 치과 따라 다름',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '한의원',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 한의원 느낌',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '의원',
+    category_small: '피부/비뇨기과 의원',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '좀 더 고려해서 선택하기도 함',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '병원',
+    category_small: '치과병원',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '좀 더 큰 규모',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '병원',
+    category_small: '요양병원',
+    radius_min_km: 10.0,
+    radius_max_km: 20.0,
+    description: '입원/요양 목적이라 거리 폭이 넓음',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '병원',
+    category_small: '한방병원',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '좀 더 큰 규모',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '병원',
+    category_small: '일반병원',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '입원/수술 가능',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '병원',
+    category_small: '종합병원',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '상급 병원 개념',
+  },
+  {
+    category_large: '보건의료',
+    category_middle: '기타 보건',
+    category_small: '유사 의료업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '물리치료',
+  },
+  {
+    category_large: '부동산',
+    category_middle: '부동산 서비스',
+    category_small: '부동산 중개/대리업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '집 찾는 곳 or 사무실 위치 고려',
+  },
+  {
+    category_large: '숙박',
+    category_middle: '일반 숙박',
+    category_small: '캠핑/글램핑',
+    radius_min_km: 50.0,
+    radius_max_km: 200.0,
+    description: '여행 목적',
+  },
+  {
+    category_large: '숙박',
+    category_middle: '일반 숙박',
+    category_small: '여관/모텔',
+    radius_min_km: 5.0,
+    radius_max_km: 20.0,
+    description: '지역에 따라 다름',
+  },
+  {
+    category_large: '숙박',
+    category_middle: '일반 숙박',
+    category_small: '호텔/리조트',
+    radius_min_km: 50.0,
+    radius_max_km: 200.0,
+    description: '여행',
+  },
+  {
+    category_large: '숙박',
+    category_middle: '일반 숙박',
+    category_small: '펜션',
+    radius_min_km: 50.0,
+    radius_max_km: 200.0,
+    description: '여행 목적',
+  },
+  {
+    category_large: '숙박',
+    category_middle: '기타 숙박',
+    category_small: '그 외 기타 숙박업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '게스트하우스 등',
+  },
+  {
+    category_large: '숙박',
+    category_middle: '기타 숙박',
+    category_small: '기숙사/고시원',
+    radius_min_km: 5.0,
+    radius_max_km: 20.0,
+    description: '학교/직장 근처',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '이용·미용',
+    category_small: '미용실',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '집 근처에서 자주 감',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '이용·미용',
+    category_small: '피부 관리실',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 or 좀 더 전문적인 곳',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '이용·미용',
+    category_small: '네일숍',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '집 근처에서 자주 감',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '컴퓨터 수리',
+    category_small: '컴퓨터/노트북/프린터 수리업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '서비스센터 등 고려',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '세탁',
+    category_small: '세탁소',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '집 앞이 최고 ㅋㅋ',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '세탁',
+    category_small: '셀프 빨래방',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '코인 빨래방 느낌',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '통신장비 수리',
+    category_small: '핸드폰/통신장비 수리업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '서비스센터 등 고려',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '욕탕·신체관리',
+    category_small: '마사지/안마',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '좀 더 멀리 전문점 찾기도 함',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '욕탕·신체관리',
+    category_small: '체형/비만 관리',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '전문점 느낌',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '욕탕·신체관리',
+    category_small: '목욕탕/사우나',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 시설',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '장례식장',
+    category_small: '화장터/묘지/납골당',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '특정 지역에 위치',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '장례식장',
+    category_small: '장례식장',
+    radius_min_km: 10.0,
+    radius_max_km: 20.0,
+    description: '보통 지역 내에서 이용',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '자동차 수리·세차',
+    category_small: '자동차 세차장',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '좀 이동해서 자동 세차 등 이용',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '자동차 수리·세차',
+    category_small: '자동차 정비소',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '전문점이나 서비스센터 고려',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '기타 가정용품 수리',
+    category_small: '시계/귀금속/악기 수리업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '전문점은 좀 멀리 있을 수 있음',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '기타 가정용품 수리',
+    category_small: '그 외 기타 개인/가정용품 수리업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '열쇠',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '기타 가정용품 수리',
+    category_small: '의류/이불 수선업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 수선집',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '기타 가정용품 수리',
+    category_small: '가죽/가방/신발 수선업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '전문점 고려',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '가전제품 수리',
+    category_small: '가전제품 수리업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '서비스센터 등',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '모터사이클 수리',
+    category_small: '모터사이클 수리업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '전문점 고려',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '기타 개인',
+    category_small: '결혼 상담 서비스업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '지역 제한 적음',
+  },
+  {
+    category_large: '수리·개인',
+    category_middle: '기타 개인',
+    category_small: '예식장업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '지역 제한 적음',
+  },
+  {
+    category_large: '소매',
+    category_middle: '기타 상품 소매',
+    category_small: '그 외 기타 상품 전문 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '취미용품',
+  },
+  {
+    category_large: '소매',
+    category_middle: '연료 소매',
+    category_small: '가정용 연료 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '보일러 기름 등 동네에서',
+  },
+  {
+    category_large: '소매',
+    category_middle: '연료 소매',
+    category_small: '가스 충전소',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '차량용 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '연료 소매',
+    category_small: '주유소',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '운전 중에 보이면 들르지',
+  },
+  {
+    category_large: '소매',
+    category_middle: '가전·통신 소매',
+    category_small: '컴퓨터/소프트웨어 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '전자상가 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '가전·통신 소매',
+    category_small: '핸드폰 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '대리점/판매점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '가전·통신 소매',
+    category_small: '가전제품 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '대형 매장 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '장식품 소매',
+    category_small: '예술품 소매업',
+    radius_min_km: 10.0,
+    radius_max_km: 20.0,
+    description: '갤러리 등 특정 지역',
+  },
+  {
+    category_large: '소매',
+    category_middle: '장식품 소매',
+    category_small: '기념품점',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '관광지 근처 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '시계·귀금속 소매',
+    category_small: '시계/귀금속 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '백화점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '자동차 부품 소매',
+    category_small: '자동차 부품 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 상가나 지역에 모여 있음',
+  },
+  {
+    category_large: '소매',
+    category_middle: '자동차 부품 소매',
+    category_small: '타이어 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '정비소 겸하는 경우 많음',
+  },
+  {
+    category_large: '소매',
+    category_middle: '의약·화장품 소매',
+    category_small: '약국',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '아플 때 가깝게 가는 곳',
+  },
+  {
+    category_large: '소매',
+    category_middle: '의약·화장품 소매',
+    category_small: '의료기기 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '특정 지역 또는 온라인',
+  },
+  {
+    category_large: '소매',
+    category_middle: '의약·화장품 소매',
+    category_small: '화장품 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '올리브영 같은 로드샵은 가깝게',
+  },
+  {
+    category_large: '소매',
+    category_middle: '애완동물·용품 소매',
+    category_small: '애완동물/애완용품 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '동네 펫샵/대형 펫샵 따라 다름',
+  },
+  {
+    category_large: '소매',
+    category_middle: '모터사이클 소매',
+    category_small: '모터사이클 및 부품 소매업',
+    radius_min_km: 10.0,
+    radius_max_km: 20.0,
+    description: '전문점은 특정 지역에 몰려 있음',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '남성 의류 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '로드샵/백화점/아울렛 따라 다름',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '여성 의류 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '로드샵/백화점/아울렛 따라 다름',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '침구류/커튼 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '전문 매장 고려',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '기타 의류 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '아동복',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '액세서리/잡화 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '로드샵/지하상가 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '신발 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: 'ABC마트 같은 체인점이나 전문점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '가발 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '전문점은 특정 지역에 몰려 있음',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '한복 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 시장이나 거리에 모여 있음',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '유아용 의류 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '백화점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '실/섬유제품 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '동대문 같은 곳은 더 넓게',
+  },
+  {
+    category_large: '소매',
+    category_middle: '섬유·의복·신발 소매',
+    category_small: '가방 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '로드샵/백화점 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '중고 상품 소매',
+    category_small: '중고 상품 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '중고나라? ㅋㅋ 아니면 특정 상점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '오락용품 소매',
+    category_small: '자전거 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '전문점 고려',
+  },
+  {
+    category_large: '소매',
+    category_middle: '오락용품 소매',
+    category_small: '문구/회화용품 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 문방구/대형 문구점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '오락용품 소매',
+    category_small: '서점',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '동네 서점/대형 서점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '오락용품 소매',
+    category_small: '장난감 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '마트나 전문점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '오락용품 소매',
+    category_small: '운동용품 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '전문 매장 고려',
+  },
+  {
+    category_large: '소매',
+    category_middle: '오락용품 소매',
+    category_small: '음반/비디오물 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 상가나 온라인',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '건어물/젓갈 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '시장이나 특정 상점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '건강보조식품 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '전문점이나 약국 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '곡물/곡분 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '방앗간이나 시장',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '정육점',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 마트나 정육점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '채소/과일 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 마트나 청과물 가게',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '아이스크림 할인점',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 슈퍼',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '가축 사료 소매업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '축산 지역 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '반찬/식료품 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '집 앞 반찬가게 ㅋㅋ',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식료품 소매',
+    category_small: '수산물 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '시장이나 동네 가게',
+  },
+  {
+    category_large: '소매',
+    category_middle: '음료 소매',
+    category_small: '생수/음료 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '슈퍼',
+  },
+  {
+    category_large: '소매',
+    category_middle: '음료 소매',
+    category_small: '주류 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 주류 판매점/와인샵 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '음료 소매',
+    category_small: '우유 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '마트',
+  },
+  {
+    category_large: '소매',
+    category_middle: '음료 소매',
+    category_small: '얼음 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '슈퍼',
+  },
+  {
+    category_large: '소매',
+    category_middle: '담배 소매',
+    category_small: '담배/전자담배 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '편의점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '안경·정밀기기 소매',
+    category_small: '사무기기 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '특정 상가나 지역',
+  },
+  {
+    category_large: '소매',
+    category_middle: '안경·정밀기기 소매',
+    category_small: '안경렌즈 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '안경점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '안경·정밀기기 소매',
+    category_small: '사진기/기타 광학기기 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '특정 상가나 지역',
+  },
+  {
+    category_large: '소매',
+    category_middle: '종합 소매',
+    category_small: '그 외 기타 종합 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '다이소 같은 곳? ㅋㅋ',
+  },
+  {
+    category_large: '소매',
+    category_middle: '종합 소매',
+    category_small: '편의점',
+    radius_min_km: 0.5,
+    radius_max_km: 1.0,
+    description: '집 앞에 있어야 제맛이지',
+  },
+  {
+    category_large: '소매',
+    category_middle: '종합 소매',
+    category_small: '슈퍼마켓',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 마트',
+  },
+  {
+    category_large: '소매',
+    category_middle: '가구 소매',
+    category_small: '가구 소매업',
+    radius_min_km: 10.0,
+    radius_max_km: 20.0,
+    description: '가구단지나 대형 매장 고려',
+  },
+  {
+    category_large: '소매',
+    category_middle: '식물 소매',
+    category_small: '꽃집',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 꽃집/전문 플로리스트샵',
+  },
+  {
+    category_large: '소매',
+    category_middle: '기타 생활용품 소매',
+    category_small: '악기 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '전문점 고려',
+  },
+  {
+    category_large: '소매',
+    category_middle: '기타 생활용품 소매',
+    category_small: '주방/가정용품 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '마트',
+  },
+  {
+    category_large: '소매',
+    category_middle: '기타 생활용품 소매',
+    category_small: '전기용품/조명장치 소매업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '철물점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '철물·건설자재 소매',
+    category_small: '기타 건설/건축자재 소매업',
+    radius_min_km: 10.0,
+    radius_max_km: 20.0,
+    description: '건축 자재 단지 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '철물·건설자재 소매',
+    category_small: '건설/건축자재 소매업',
+    radius_min_km: 10.0,
+    radius_max_km: 20.0,
+    description: '건축 자재 단지 등',
+  },
+  {
+    category_large: '소매',
+    category_middle: '철물·건설자재 소매',
+    category_small: '철물/공구 소매업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 철물점',
+  },
+  {
+    category_large: '소매',
+    category_middle: '철물·건설자재 소매',
+    category_small: '벽지/장판/마루 소매업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '전문 인테리어 매장 고려',
+  },
+  {
+    category_large: '음식',
+    category_middle: '주점',
+    category_small: '요리 주점',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 술집 느낌',
+  },
+  {
+    category_large: '음식',
+    category_middle: '주점',
+    category_small: '생맥주 전문',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 술집 느낌',
+  },
+  {
+    category_large: '음식',
+    category_middle: '주점',
+    category_small: '무도 유흥 주점',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '특정 지역에 모여 있음',
+  },
+  {
+    category_large: '음식',
+    category_middle: '주점',
+    category_small: '일반 유흥 주점',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '좀 더 넓은 지역에서 찾기도 함',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 외국',
+    category_small: '분류 안된 외국식 음식점',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '좀 특별한 메뉴 찾을 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '서양식',
+    category_small: '파스타/스테이크',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '동네 맛집/데이트 코스 고려',
+  },
+  {
+    category_large: '음식',
+    category_middle: '서양식',
+    category_small: '경양식',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '레트로 느낌? ㅋㅋ',
+  },
+  {
+    category_large: '음식',
+    category_middle: '서양식',
+    category_small: '패밀리레스토랑',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '대형 매장이나 특정 지역',
+  },
+  {
+    category_large: '음식',
+    category_middle: '서양식',
+    category_small: '기타 서양식 음식점',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '멕시칸',
+  },
+  {
+    category_large: '음식',
+    category_middle: '일식',
+    category_small: '기타 일식 음식점',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '라멘',
+  },
+  {
+    category_large: '음식',
+    category_middle: '일식',
+    category_small: '일식 면 요리',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '우동',
+  },
+  {
+    category_large: '음식',
+    category_middle: '일식',
+    category_small: '일식 카레/돈가스/덮밥',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '혼밥이나 간단하게 먹을 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '일식',
+    category_small: '일식 회/초밥',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '좀 더 신선도나 맛집 고려',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '치킨',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '배달도 시키고 포장도 하고',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '토스트/샌드위치/샐러드',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '간단하게 먹을 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '그 외 기타 간이 음식점',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '꼬치',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '아이스크림/빙수',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '디저트',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '버거',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '맥날/버거킹은 가깝게',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '피자',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '배달 or 포장',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '떡/한과',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '떡집이나 시장',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '김밥/만두/분식',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '학교 앞',
+  },
+  {
+    category_large: '음식',
+    category_middle: '기타 간이',
+    category_small: '빵/도넛',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '파리바게뜨/던킨은 가깝게',
+  },
+  {
+    category_large: '음식',
+    category_middle: '중식',
+    category_small: '중국집',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 중국집 배달각? ㅋㅋ',
+  },
+  {
+    category_large: '음식',
+    category_middle: '중식',
+    category_small: '마라탕/훠궈',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '마라탕 중독자는 좀 멀리도 간다던데..',
+  },
+  {
+    category_large: '음식',
+    category_middle: '동남아시아',
+    category_small: '베트남식 전문',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '쌀국수 땡길 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '동남아시아',
+    category_small: '기타 동남아식 전문',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '태국',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '닭/오리고기 구이/찜',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '백숙',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '소고기 구이/찜',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '좀 더 분위기 좋은 곳 찾을 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '기타 한식 음식점',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '보리밥',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '족발/보쌈',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '배달도 되지만 포장/매장 이용도 많음',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '횟집',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '신선도나 분위기 고려',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '냉면/밀면',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '여름에 시원한 거 땡길 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '국수/칼국수',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '간단하게 먹을 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '복 요리 전문',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '전문점은 좀 멀리 있을 수 있음',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '곱창 전골/구이',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '밤에 친구들이랑 ㄱㄱ',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '백반/한정식',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '집밥 생각날 때',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '국/탕/찌개류',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '김치찌개',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '해산물 구이/찜',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '조개구이 등 바닷가 근처? 아니면 전문점',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '전/부침개',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '비 오는 날 동네에서 ㅋㅋ',
+  },
+  {
+    category_large: '음식',
+    category_middle: '한식',
+    category_small: '돼지고기 구이/찜',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '삼겹살',
+  },
+  {
+    category_large: '음식',
+    category_middle: '구내식당·뷔페',
+    category_small: '구내식당',
+    radius_min_km: 0.5,
+    radius_max_km: 1.0,
+    description: '회사/학교 안에 있거나 아주 가깝게',
+  },
+  {
+    category_large: '음식',
+    category_middle: '구내식당·뷔페',
+    category_small: '뷔페',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 건물이나 지역',
+  },
+  {
+    category_large: '음식',
+    category_middle: '비알코올',
+    category_small: '카페',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 카페/프랜차이즈는 가깝게',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '도서관·사적지',
+    category_small: '독서실/스터디 카페',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '공부할 때 가깝게 가야지',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '수상/해양 레저업',
+    radius_min_km: 30.0,
+    radius_max_km: 100.0,
+    description: '강가나 바닷가 근처',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '노래방',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '친구들이랑 놀 때 가깝게',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '기타 오락장',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '보드게임방',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '바둑/장기/체스 경기 운영업',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 기원 느낌',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '낚시터 운영업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '교외에 위치하는 경우 많음',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '기타 오락관련 서비스업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '방탈출 카페 등',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: 'PC방',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네나 역 근처',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '전자 게임장',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '오락실 ㅋㅋ',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '복권 발행/판매업',
+    radius_min_km: 0.5,
+    radius_max_km: 1.0,
+    description: '편의점이나 복권방',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '유원지·오락',
+    category_small: '비디오방',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '예전만큼 많지는 않지만 동네에 있을 수 있음',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '당구장',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '친구들이랑 동네에서 치기 좋음',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '스쿼시/라켓볼장',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '특정 시설에 위치',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '테니스장',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '특정 시설에 위치',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '탁구장',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 체육시설',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '헬스장',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '집 근처에서 꾸준히 다녀야 하니까',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '기타 스포츠시설 운영업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '실내 야구장',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '수영장',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 체육센터나 아파트 단지 내',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '종합 스포츠시설',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '규모가 큰 시설',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '골프 연습장',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 연습장/스크린 골프',
+  },
+  {
+    category_large: '예술·스포츠',
+    category_middle: '스포츠 서비스',
+    category_small: '볼링장',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '놀거리 찾을 때',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '요가/필라테스 학원',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '집 근처에서 꾸준히 다녀야 좋음',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '컴퓨터 학원',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '특정 목적 갖고 다님',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '음악학원',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 학원/전문 학원 따라 다름',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '운전학원',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 지역에 위치',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '기타 예술/스포츠 교육기관',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '취미',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '사회교육시설',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '문화센터 등',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '청소년 수련시설',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '교외에 위치하는 경우 많음',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '외국어학원',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '학원가나 특정 지역',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '미술학원',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '동네 학원/전문 학원 따라 다름',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '직원 훈련기관',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '특정 지역에 위치하거나 출장',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '태권도/무술학원',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '어린이/청소년 대상이라 가깝게',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '기타 기술/직업 훈련학원',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 분야 전문',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '전문자격/고시학원',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '학원가나 특정 지역',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '레크리에이션 교육기관',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '특정 시설이나 야외 활동 관련',
+  },
+  {
+    category_large: '교육',
+    category_middle: '기타 교육',
+    category_small: '그 외 기타 교육기관',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특수 교육 등',
+  },
+  {
+    category_large: '교육',
+    category_middle: '교육 지원',
+    category_small: '교육컨설팅업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '온라인도 많고 지역 제한 적음',
+  },
+  {
+    category_large: '교육',
+    category_middle: '교육 지원',
+    category_small: '기타 교육지원 서비스업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '학습지 방문',
+  },
+  {
+    category_large: '교육',
+    category_middle: '일반 교육',
+    category_small: '입시·교과학원',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '학원가나 동네 학원',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '시장 조사',
+    category_small: '시장 조사 및 여론 조사업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '주로 서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '인쇄·제품제작',
+    category_small: '명함/간판/광고물 제작',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 상가나 지역',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '기술 서비스',
+    category_small: '기타 엔지니어링 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '기술 서비스',
+    category_small: '환경 관련 엔지니어링 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '기술 서비스',
+    category_small: '건물 및 토목 엔지니어링 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '기술 서비스',
+    category_small: '도시 계획 및 조경 설계 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '기술 서비스',
+    category_small: '건축 설계 및 관련 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '회계·세무',
+    category_small: '세무사',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '사무실 위치 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '회계·세무',
+    category_small: '기타 회계 관련 서비스업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '사무실 위치 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '회계·세무',
+    category_small: '공인회계사',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '사무실 위치 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '수의',
+    category_small: '동물병원',
+    radius_min_km: 1.0,
+    radius_max_km: 5.0,
+    description: '아플 때 가깝게 가야지',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '법무관련',
+    category_small: '변호사',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '사무실 위치 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '법무관련',
+    category_small: '기타 법무관련 서비스업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '법무사',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '법무관련',
+    category_small: '행정사',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '사무실 위치 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '법무관련',
+    category_small: '공인노무사',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '사무실 위치 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '법무관련',
+    category_small: '변리사',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '특정 지역 (서울 등)에 집중된 경우 많음',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '법무관련',
+    category_small: '법무사',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '사무실 위치 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '전문 디자인',
+    category_small: '패션/섬유/기타 전문 디자인업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '전문 디자인',
+    category_small: '인테리어 디자인업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '시공 지역 고려',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '전문 디자인',
+    category_small: '제품 디자인업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '전문 디자인',
+    category_small: '시각 디자인업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '광고',
+    category_small: '옥외/전시 광고 대행업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '광범위한 지역 대상',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '광고',
+    category_small: '광고 대행업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '광고',
+    category_small: '광고물 설계/제작업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '특정 상가나 지역',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '광고',
+    category_small: '기타 광고 관련 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '광고',
+    category_small: '광고 매체 판매업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '사진 촬영',
+    category_small: '사진촬영업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '스튜디오 위치',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '기타 전문 과학',
+    category_small: '사업/무형 재산권 중개업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '기타 전문 과학',
+    category_small: '번역/통역 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '과학·기술',
+    category_middle: '본사·경영 컨설팅',
+    category_small: '경영 컨설팅업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '시설관리',
+    category_small: '사업시설 유지·관리 서비스업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '계약된 시설 위치에 따라 다름',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '산업용품 대여',
+    category_small: '컴퓨터/사무기기 대여업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '특정 지역에 몰려 있거나 배송',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '산업용품 대여',
+    category_small: '건설기계/장비 대여업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '특정 지역에 몰려 있거나 배송',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '산업용품 대여',
+    category_small: '기타 산업용 기계/장비 대여업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '특정 지역에 몰려 있거나 배송',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '고용 알선',
+    category_small: '고용 알선업',
+    radius_min_km: 5.0,
+    radius_max_km: 20.0,
+    description: '지역 제한 적음',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '고용 알선',
+    category_small: '임시/일용 인력 공급업',
+    radius_min_km: 5.0,
+    radius_max_km: 20.0,
+    description: '지역 제한 적음',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '고용 알선',
+    category_small: '상용 인력 공급 및 인사관리 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '기타 사업 서비스',
+    category_small: '포장/충전업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '물류 센터 등 특정 지역',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '기타 사업 서비스',
+    category_small: '전시/컨벤션/행사 대행 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '서비스 기반',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '청소·방제',
+    category_small: '산업설비; 운송장비 및 공공장소 청소업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '계약된 시설 위치에 따라 다름',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '청소·방제',
+    category_small: '소독; 구충 및 방제 서비스업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '서비스 지역 고려',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '청소·방제',
+    category_small: '건축물 일반 청소업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '서비스 지역 고려',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '여행사·보조',
+    category_small: '여행사',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '온라인도 많고 지역 제한 적음',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '여행사·보조',
+    category_small: '기타 여행 보조/예약 서비스업',
+    radius_min_km: null,
+    radius_max_km: null,
+    description: '온라인 서비스 기반',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '가정용품 대여',
+    category_small: '음반/비디오물 대여업',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 대여점',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '가정용품 대여',
+    category_small: '만화방',
+    radius_min_km: 1.0,
+    radius_max_km: 3.0,
+    description: '동네 만화방',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '가정용품 대여',
+    category_small: '의류 대여업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '드레스',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '가정용품 대여',
+    category_small: '스포츠/레크리에이션 용품 대여업',
+    radius_min_km: 3.0,
+    radius_max_km: 10.0,
+    description: '장비 대여점 등',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '가정용품 대여',
+    category_small: '기타 개인/가정용품 대여업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '특정 물품 대여',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '사무 지원',
+    category_small: '기타 사무 지원 서비스업',
+    radius_min_km: 5.0,
+    radius_max_km: 10.0,
+    description: '복사',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '사무 지원',
+    category_small: '복사업',
+    radius_min_km: 3.0,
+    radius_max_km: 7.0,
+    description: '인쇄소 등',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '조경·유지',
+    category_small: '조경 유지·관리 서비스업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '관리 대상 위치에 따라 다름',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '운송장비 대여',
+    category_small: '기타 운송장비 대여업',
+    radius_min_km: 10.0,
+    radius_max_km: 30.0,
+    description: '특정 지역에 몰려 있거나 배송',
+  },
+  {
+    category_large: '시설관리·임대',
+    category_middle: '운송장비 대여',
+    category_small: '자동차 대여업',
+    radius_min_km: 5.0,
+    radius_max_km: 15.0,
+    description: '역',
+  },
+];
+
+
+
+=== File: src/markets/markets.controller.ts ===
+=======================================
+import { Controller, Get, Param } from '@nestjs/common';
+import { MarketsService } from './markets.service';
+import { Market } from './schemas/market.schema';
+
+@Controller('api/markets')
+export class MarketsController {
+  constructor(private readonly marketsService: MarketsService) {}
+
+  @Get()
+  async getAllMarkets(): Promise<Market[]> {
+    return this.marketsService.findAll();
+  }
+
+  @Get(':id')
+  async getMarket(@Param('id') id: string): Promise<Market> {
+    return this.marketsService.findOne(id);
+  }
+}
+
+
+
+=== File: src/markets/markets.service.ts ===
+=======================================
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { Market, MarketDocument } from './schemas/market.schema';
+
+@Injectable()
+export class MarketsService {
+  constructor(
+    @InjectModel(Market.name) private marketModel: Model<MarketDocument>,
+  ) {}
+
+  async findAll(): Promise<Market[]> {
+    return this.marketModel.find().exec();
+  }
+
+  async findOne(id: string): Promise<Market> {
+    const market = await this.marketModel.findOne({ shop_id: id }).exec();
+    if (!market) {
+      throw new NotFoundException(`Market with ID ${id} not found`);
+    }
+    return market;
+  }
+}
+
+
+
+=== File: src/markets/markets.module.ts ===
+=======================================
+import { Module } from '@nestjs/common';
+import { MongooseModule } from '@nestjs/mongoose';
+import { MarketsController } from './markets.controller';
+import { MarketsService } from './markets.service';
+import { Market, MarketSchema } from './schemas/market.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: Market.name, schema: MarketSchema }]),
+  ],
+  controllers: [MarketsController],
+  providers: [MarketsService],
+  exports: [MarketsService],
+})
+export class MarketsModule {}
+
+
+
+=== File: src/markets/schemas/market.schema.ts ===
+=======================================
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+
+export type MarketDocument = Market & Document;
+
+@Schema()
+export class Market {
+  @Prop({ required: true })
+  shop_id!: string;
+
+  @Prop()
+  name!: string;
+
+  @Prop()
+  category_large!: string;
+
+  @Prop()
+  category_middle!: string;
+
+  @Prop()
+  category_small!: string;
+
+  @Prop()
+  dong_code!: string;
+
+  @Prop()
+  longitude!: number;
+
+  @Prop()
+  latitude!: number;
+}
+
+export const MarketSchema = SchemaFactory.createForClass(Market);
+
+
+
+=== File: src/app.controller.spec.ts ===
+=======================================
+import { Test, TestingModule } from '@nestjs/testing';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+
+describe('AppController', () => {
+  let appController: AppController;
+
+  beforeEach(async () => {
+    const app: TestingModule = await Test.createTestingModule({
+      controllers: [AppController],
+      providers: [AppService],
+    }).compile();
+
+    appController = app.get<AppController>(AppController);
+  });
+
+  describe('root', () => {
+    it('should return "Hello World!"', () => {
+      expect(appController.getHello()).toBe('Hello World!');
+    });
+  });
+});
+
+
+
+=== File: src/app.controller.ts ===
+=======================================
+import { Controller, Get } from '@nestjs/common';
+import { AppService } from './app.service';
+
+@Controller()
+export class AppController {
+  constructor(private readonly appService: AppService) {}
+
+  @Get()
+  getHello(): string {
+    return this.appService.getHello();
+  }
+}
+
+
+
+=== File: src/ollama/ollama.service.ts ===
+=======================================
+import { Injectable } from '@nestjs/common';
+import axios, { AxiosResponse } from 'axios';
+
+type OllamaResponseItem = {
+  model: string;
+  response: string;
+  done: boolean;
+};
+
+@Injectable()
+export class OllamaService {
+  private baseUrl = 'http://192.168.0.111:11434';
+
+  async generateText(
+    prompt: string,
+    model = 'gemma3:1b-it-qat',
+  ): Promise<string> {
+    const response: AxiosResponse<OllamaResponseItem[]> = await axios.post(
+      `${this.baseUrl}/api/generate`,
+      {
+        model,
+        prompt,
+        stream: false,
+      },
+      {
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+
+    // Ollama API의 응답이 배열이 아닐 수도 있으니, 배열/객체 모두 대응
+    const data = response.data;
+
+    let result: string | undefined;
+
+    if (Array.isArray(data)) {
+      // 배열 응답: [ { model, response, ... } ]
+      if (data.length > 0 && typeof data[0].response === 'string') {
+        result = data[0].response;
+      }
+    } else if (
+      typeof data === 'object' &&
+      data !== null &&
+      'response' in data
+    ) {
+      // 객체 응답: { ... , response: "..." }
+      const obj = data as { response?: unknown };
+      if (typeof obj.response === 'string') {
+        result = obj.response;
+      }
+    }
+
+    if (!result) {
+      throw new Error('Unexpected Ollama response format');
+    }
+
+    // response에 마크다운 코드블록(```json ... ```)이 포함되어 있으면 순수 JSON만 추출
+    const codeBlockMatch = result.match(/```(?:json)?\n?([\s\S]*?)```/i);
+    if (codeBlockMatch) {
+      return codeBlockMatch[1].trim();
+    }
+
+    return result.trim();
+  }
+
+  async prompt(prompt: string, model = 'gemma3:1b-it-qat'): Promise<string> {
+    return this.generateText(prompt, model);
+  }
+}
+
+
+
+=== File: src/ollama/ollama.module.ts ===
+=======================================
+import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
+import { OllamaService } from './ollama.service';
+
+@Module({
+  imports: [ConfigModule],
+  providers: [OllamaService],
+  exports: [OllamaService],
+})
+export class OllamaModule {}
+
+
+
+=== File: src/elasticsearch/elasticsearch.service.ts ===
+=======================================
+import { Client } from '@elastic/elasticsearch';
+import { Injectable } from '@nestjs/common';
+
+@Injectable()
+export class ElasticsearchService {
+  private client: Client;
+
+  constructor() {
+    this.client = new Client({ node: 'http://192.168.0.111:9200' });
+  }
+
+  async search(params: any) {
+    return await this.client.search(params);
+  }
+
+  getClient() {
+    return this.client;
+  }
+}
+
+
+
+=== File: src/elasticsearch/elasticsearch.module.ts ===
+=======================================
+import { DynamicModule, Global, Module } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import {
+  ElasticsearchModule as NestElasticsearchModule,
+  ElasticsearchModuleOptions,
+} from '@nestjs/elasticsearch';
+
+// Elasticsearch 9.x 호환을 위한 타입 확장
+interface ExtendedElasticsearchOptions extends ElasticsearchModuleOptions {
+  node: string;
+  auth?: {
+    username: string;
+    password: string;
+  };
+  tls?: {
+    rejectUnauthorized: boolean;
+  };
+  maxRetries?: number;
+  requestTimeout?: number;
+}
+
+@Global()
+@Module({})
+export class ElasticsearchModule {
+  static forRoot(): DynamicModule {
+    return {
+      module: ElasticsearchModule,
+      imports: [
+        NestElasticsearchModule.registerAsync({
+          inject: [ConfigService],
+          useFactory: (
+            configService: ConfigService,
+          ): ExtendedElasticsearchOptions => {
+            const node =
+              configService.get<string>('elasticsearch.node') ||
+              'http://localhost:9200';
+            const username = configService.get<string>(
+              'elasticsearch.username',
+            );
+            const password = configService.get<string>(
+              'elasticsearch.password',
+            );
+
+            // Elasticsearch 9.x 호환 옵션
+            const esOptions: ExtendedElasticsearchOptions = {
+              node,
+              maxRetries: 5,
+              requestTimeout: 30000,
+            };
+
+            // 인증 정보 설정 (Elasticsearch 9.x 스타일)
+            if (username && password) {
+              esOptions.auth = { username, password };
+            }
+
+            // SSL/TLS 설정 (https인 경우)
+            if (node.startsWith('https')) {
+              esOptions.tls = {
+                rejectUnauthorized: false, // 개발 환경에서만 사용, 프로덕션에서는 적절한 인증서 사용
+              };
+            }
+
+            return esOptions;
+          },
+        }),
+      ],
+      exports: [NestElasticsearchModule],
+    };
+  }
+}
+
+
+
+=== File: src/elasticsearch/models/shop.document.ts ===
+=======================================
+
+
+
+=== File: src/elasticsearch/models/building.document.ts ===
+=======================================
+// 건물 데이터의 기본 구조
+export interface BuildingDocument {
+  dong_name: string; // 동 이름 (예: "서울특별시 동작구 상도1동")
+  jibun: string; // 지번 (예: "544")
+  purpose_category_name: string; // 용도 분류 (예: "상업용")
+  latitude: number; // 위도
+  longitude: number; // 경도
+  mongo_id: string; // MongoDB ObjectId
+}
+
+// Elasticsearch 응답 구조
+export interface ElasticsearchHit {
+  _index: string; // 인덱스 이름
+  _id: string; // 문서 ID
+  _score: number; // 검색 점수
+  _source: BuildingDocument; // 실제 문서 데이터
+}
+
+// Elasticsearch 검색 응답 전체 구조
+export interface ElasticsearchResponse {
+  took: number;
+  timed_out: boolean;
+  _shards: {
+    total: number;
+    successful: number;
+    skipped: number;
+    failed: number;
+  };
+  hits: {
+    total: {
+      value: number;
+      relation: string;
+    };
+    max_score: number;
+    hits: ElasticsearchHit[];
+  };
+}
