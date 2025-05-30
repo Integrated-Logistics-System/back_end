@@ -65,7 +65,7 @@ export class AuthService {
     }
 
     // Verify password
-    const isPasswordValid = await bcrypt.compare(
+    const isPasswordValid = bcrypt.compare(
       loginDto.password,
       user.password,
     );

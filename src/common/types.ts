@@ -1,5 +1,13 @@
 import { Request } from "express";
 
+// Task Priority 열거형
+export enum TaskPriority {
+  LOW = 'low',
+  MEDIUM = 'medium',
+  HIGH = 'high',
+  URGENT = 'urgent'
+}
+
 // Request 타입 정의
 export interface AuthenticatedRequest extends Request {
   user: {

@@ -9,13 +9,19 @@ async function bootstrap(): Promise<void> {
   // Get configuration service
   const configService = app.get(ConfigService);
 
-  // Enable CORS
+  // Enable CORS - Allow all origins for development
   app.enableCors({
-    origin:
-      process.env.NODE_ENV === "production"
-        ? ["https://your-frontend-domain.com"]
-        : ["http://localhost:3000", "http://localhost:5173"],
+    origin: true, // Allow all origins
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Origin',
+      'X-Requested-With', 
+      'Content-Type',
+      'Accept',
+      'Authorization',
+      'Cache-Control'
+    ],
   });
 
   // Global validation pipe

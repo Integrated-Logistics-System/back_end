@@ -1,7 +1,6 @@
 import { Module } from "@nestjs/common";
 import { ConfigModule } from "@nestjs/config";
 import { MongooseModule } from "@nestjs/mongoose";
-import { ElasticsearchModule } from "@nestjs/elasticsearch";
 import { BullModule } from "@nestjs/bull";
 import { AppController } from "./app.controller";
 import { AppService } from "./app.service";
@@ -12,7 +11,6 @@ import { ProjectsModule } from "./projects/projects.module";
 import { AiModule } from "./ai/ai.module";
 import { SearchModule } from "./search/search.module";
 import { databaseConfig } from "./config/database.config";
-import { elasticsearchConfig } from "./config/elasticsearch.config";
 import { redisConfig } from "./config/redis.config";
 
 @Module({
@@ -25,9 +23,6 @@ import { redisConfig } from "./config/redis.config";
 
     // Database
     MongooseModule.forRootAsync(databaseConfig()),
-
-    // Elasticsearch
-    ElasticsearchModule.registerAsync(elasticsearchConfig()),
 
     // Redis/Bull Queue
     BullModule.forRootAsync(redisConfig()),

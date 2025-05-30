@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  Logger,
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import { Model, Types } from "mongoose";
@@ -14,9 +15,12 @@ import {
 } from "./dto/task.dto";
 import { AiService } from "../ai/ai.service";
 import { SearchService } from "../search/search.service";
+import { TaskPriority } from "../common/types";
 
 @Injectable()
 export class TasksService {
+  private readonly logger = new Logger(TasksService.name);
+
   constructor(
     @InjectModel(Task.name) private taskModel: Model<TaskDocument>,
     private aiService: AiService,
@@ -45,60 +49,102 @@ export class TasksService {
     createTaskDto: CreateTaskFromNaturalLanguageDto,
     userId: string,
   ): Promise<Task | { task: any; needsConfirmation: boolean; suggestions: string[] }> {
-    // Parse natural language input using AI with LangGraph
-    const parsedData = await this.aiService.parseNaturalLanguageTask(
-      createTaskDto.input,
-    );
+    // 새로운 AI 서비스의 고급 작업 생성 기능 사용
+    try {
+      const aiResult = await this.aiService.createTaskFromNaturalLanguage(
+        createTaskDto.input,
+        userId
+      );
 
-    // LangGraph 워크플로우 결과에 따른 분기 처리
-    if (parsedData.confidence < 0.6) {
-      return {
-        task: parsedData,
-        needsConfirmation: true,
-        suggestions: [
-          "작업 내용을 더 구체적으로 입력해주세요.",
-          "마감일이나 우선순위를 명시해보세요.",
-        ],
+      // 확인이 필요한 경우 사용자에게 제안사항과 함께 반환
+      if (aiResult.needsConfirmation) {
+        return {
+          task: aiResult.task,
+          needsConfirmation: true,
+          suggestions: aiResult.suggestions,
+        };
+      }
+
+      // 확신이 높은 경우 바로 작업 생성
+      const taskData = {
+        title: aiResult.task.title,
+        description: aiResult.task.description,
+        userId: new Types.ObjectId(userId),
+        projectId: createTaskDto.projectId
+          ? new Types.ObjectId(createTaskDto.projectId)
+          : undefined,
+        priority: aiResult.task.priority,
+        dueDate: aiResult.task.dueDate,
+        tags: aiResult.task.tags || [],
+        originalInput: createTaskDto.input,
+        aiMetadata: aiResult.task.aiMetadata,
       };
-    }
 
-    if (parsedData.priority === TaskPriority.URGENT && parsedData.confidence < 0.8) {
-      return {
-        task: parsedData,
-        needsConfirmation: true,
-        suggestions: [
-          "긴급한 작업입니다. 내용을 다시 한번 확인해주세요.",
-          "마감일과 담당자를 명확히 해주세요.",
-        ],
+      const createdTask = new this.taskModel(taskData);
+      const savedTask = await createdTask.save();
+
+      // Index in Search (현재는 비활성화됨)
+      await this.searchService.indexTask(savedTask);
+
+      return savedTask;
+    } catch (error) {
+      this.logger.error(`Advanced AI task creation failed: ${error}, falling back to simple parsing`);
+      
+      // 폴백: 기본 파싱 사용
+      const parsedData = await this.aiService.parseNaturalLanguageTask(
+        createTaskDto.input,
+      );
+
+      // LangGraph 워크플로우 결과에 따른 분기 처리
+      if (parsedData.confidence < 0.6) {
+        return {
+          task: parsedData,
+          needsConfirmation: true,
+          suggestions: [
+            "작업 내용을 더 구체적으로 입력해주세요.",
+            "마감일이나 우선순위를 명시해보세요.",
+          ],
+        };
+      }
+
+      if (parsedData.priority === TaskPriority.URGENT && parsedData.confidence < 0.8) {
+        return {
+          task: parsedData,
+          needsConfirmation: true,
+          suggestions: [
+            "긴급한 작업입니다. 내용을 다시 한번 확인해주세요.",
+            "마감일과 담당자를 명확히 해주세요.",
+          ],
+        };
+      }
+
+      const taskData = {
+        title: parsedData.title,
+        description: parsedData.description,
+        userId: new Types.ObjectId(userId),
+        projectId: createTaskDto.projectId
+          ? new Types.ObjectId(createTaskDto.projectId)
+          : undefined,
+        priority: parsedData.priority,
+        dueDate: parsedData.dueDate,
+        tags: parsedData.tags,
+        originalInput: createTaskDto.input,
+        aiMetadata: {
+          extractedEntities: parsedData.extractedEntities,
+          suggestedPriority: parsedData.priority,
+          estimatedDuration: parsedData.estimatedDuration,
+          confidence: parsedData.confidence,
+        },
       };
+
+      const createdTask = new this.taskModel(taskData);
+      const savedTask = await createdTask.save();
+
+      // Index in Search
+      await this.searchService.indexTask(savedTask);
+
+      return savedTask;
     }
-
-    const taskData = {
-      title: parsedData.title,
-      description: parsedData.description,
-      userId: new Types.ObjectId(userId),
-      projectId: createTaskDto.projectId
-        ? new Types.ObjectId(createTaskDto.projectId)
-        : undefined,
-      priority: parsedData.priority,
-      dueDate: parsedData.dueDate,
-      tags: parsedData.tags,
-      originalInput: createTaskDto.input,
-      aiMetadata: {
-        extractedEntities: parsedData.extractedEntities,
-        suggestedPriority: parsedData.priority,
-        estimatedDuration: parsedData.estimatedDuration,
-        confidence: parsedData.confidence,
-      },
-    };
-
-    const createdTask = new this.taskModel(taskData);
-    const savedTask = await createdTask.save();
-
-    // Index in Elasticsearch for search
-    await this.searchService.indexTask(savedTask);
-
-    return savedTask;
   }
 
   async findAll(userId: string, query: TaskQueryDto): Promise<Task[]> {
